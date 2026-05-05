@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, ScanLine, ArrowRight, Inbox, RefreshCw, AlertCircle } from 'lucide-react'
+import { Mail, ScanLine, ArrowRight, Inbox, RefreshCw } from 'lucide-react'
 import { savePendingMagicLink, readPendingMagicLink, useAuth } from '@/lib/auth'
+import { useToast } from '@/components/Toast'
 
 type Step = 'email' | 'sent'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { operator, ready } = useAuth()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [token, setToken] = useState('')
 
   useEffect(() => {
@@ -29,23 +30,28 @@ export function LoginPage() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = email.trim()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Ingresá un email válido.')
+    if (!trimmed) {
+      toast.warning('Falta tu email', 'Necesitamos saber a quién mandarle el link.')
       return
     }
-    setError(null)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error('Email inválido', 'Revisá el formato — algo así como vos@deenex.com.')
+      return
+    }
     const pending = savePendingMagicLink(trimmed)
     setToken(pending.token)
     setStep('sent')
+    toast.success('Link enviado', `Revisá ${trimmed}`)
   }
 
   const resend = () => {
     const pending = savePendingMagicLink(email)
     setToken(pending.token)
+    toast.info('Link reenviado', 'Si no aparece en unos segundos, revisá spam.')
   }
 
   return (
-    <div className="bg-amber-mesh bg-grid-pattern grid min-h-[100svh] place-items-center bg-primary-50 px-4 py-10">
+    <div className="bg-violet-mesh bg-grid-pattern grid min-h-[100svh] place-items-center bg-primary-50 px-4 py-10">
       <div className="animate-fade-up w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <div className="grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-accent-400 to-accent-600 text-white shadow-cta">
@@ -86,22 +92,12 @@ export function LoginPage() {
                   autoComplete="email"
                   autoFocus
                   value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    if (error) setError(null)
-                  }}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="vos@deenex.com"
                   className="w-full rounded-2xl bg-primary-50 py-3.5 pl-11 pr-4 text-base text-neutral-900 ring-1 ring-transparent transition-all duration-200 placeholder:text-neutral-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-400 focus:shadow-card"
                 />
               </div>
             </label>
-
-            {error && (
-              <div className="animate-fade-in flex items-center gap-2 rounded-2xl bg-status-error-bg p-3 text-sm font-medium text-status-error-fg">
-                <AlertCircle size={16} className="shrink-0 text-status-error" />
-                {error}
-              </div>
-            )}
 
             <button
               type="submit"

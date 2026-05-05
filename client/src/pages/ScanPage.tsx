@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
-import { Camera, Keyboard, ScanLine, AlertCircle, Sparkles } from 'lucide-react'
+import { Camera, Keyboard, ScanLine, Sparkles, ShieldAlert } from 'lucide-react'
 import { mockOrders } from '@/data/mockOrders'
 import { cn } from '@/lib/cn'
+import { useToast } from '@/components/Toast'
 
 type Mode = 'idle' | 'camera' | 'manual'
 
 export function ScanPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [mode, setMode] = useState<Mode>('idle')
   const [manualToken, setManualToken] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const containerId = 'qr-reader'
 
@@ -34,19 +35,27 @@ export function ScanPage() {
       )
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'No pudimos acceder a la cámara.'
-        setError(msg)
+        toast.error('Cámara bloqueada', msg + ' Probá ingresando el código a mano.')
         setMode('idle')
       })
     return () => {
       active = false
       scanner.stop().catch(() => {}).finally(() => scanner.clear().catch(() => {}))
     }
-  }, [mode, navigate])
+  }, [mode, navigate, toast])
 
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!manualToken.trim()) return
-    navigate(`/pedidos/${encodeURIComponent(manualToken.trim())}`)
+    const trimmed = manualToken.trim()
+    if (!trimmed) {
+      toast.warning('Falta el código', 'Ingresá el token del pedido para continuar.')
+      return
+    }
+    if (trimmed.length < 4) {
+      toast.warning('Código muy corto', 'Revisá el código del cliente.')
+      return
+    }
+    navigate(`/pedidos/${encodeURIComponent(trimmed)}`)
   }
 
   return (
@@ -63,18 +72,10 @@ export function ScanPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="animate-fade-in flex items-start gap-3 rounded-2xl bg-status-error-bg p-4 text-status-error-fg">
-          <AlertCircle size={20} className="mt-0.5 shrink-0" />
-          <p className="text-sm font-medium">{error}</p>
-        </div>
-      )}
-
-      <div className="bg-amber-mesh relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-accent-50 via-white to-cat-extra-bg/40 sm:aspect-[4/3]">
+      <div className="bg-violet-mesh relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-accent-50 via-white to-cat-extra-bg/50 sm:aspect-[4/3]">
         {mode === 'camera' ? (
           <>
             <div id={containerId} className="absolute inset-0" />
-            {/* Scan line animation overlay */}
             <div className="pointer-events-none absolute inset-x-0 top-1/4 h-1/2">
               <div className="animate-scan-line mx-auto h-px w-1/2 bg-status-success shadow-[0_0_12px_3px_#10b981]" />
             </div>
@@ -100,10 +101,7 @@ export function ScanPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
-          onClick={() => {
-            setError(null)
-            setMode((m) => (m === 'camera' ? 'idle' : 'camera'))
-          }}
+          onClick={() => setMode((m) => (m === 'camera' ? 'idle' : 'camera'))}
           className={cn(
             'flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold transition-all duration-200',
             'focus-visible:ring-2 focus-visible:ring-offset-2',
@@ -147,6 +145,15 @@ export function ScanPage() {
           </button>
         </form>
       )}
+
+      {/* Tip card */}
+      <div className="flex items-start gap-3 rounded-2xl bg-accent-50 p-4 text-accent-800 ring-1 ring-accent-100">
+        <ShieldAlert size={18} className="mt-0.5 shrink-0 text-accent-500" />
+        <p className="text-xs font-medium">
+          <span className="font-bold">Tip:</span> el QR vence cuando el pedido se completa.
+          Si no escanea, probá pedirle al cliente que aumente el brillo de la pantalla.
+        </p>
+      </div>
 
       <div className="rounded-3xl bg-white p-5 shadow-card">
         <div className="flex items-center justify-between">

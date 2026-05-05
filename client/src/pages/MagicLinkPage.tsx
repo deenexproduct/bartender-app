@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { clearPendingMagicLink, readPendingMagicLink, useAuth } from '@/lib/auth'
+import { useToast } from '@/components/Toast'
 
 type State = 'verifying' | 'ok' | 'invalid'
 
 export function MagicLinkPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [params] = useSearchParams()
   const { signIn, operator, ready } = useAuth()
   const [state, setState] = useState<State>('verifying')
@@ -25,13 +27,15 @@ export function MagicLinkPage() {
 
     if (!token || !email || !pending || pending.token !== token || pending.email !== email) {
       setState('invalid')
+      toast.error('Link inválido o vencido', 'Pediles un nuevo link desde el login.')
       return
     }
 
     signIn(email)
     clearPendingMagicLink()
     setState('ok')
-  }, [ready, params, signIn, operator])
+    toast.success('Sesión iniciada', `Bienvenido a tu turno.`)
+  }, [ready, params, signIn, operator, toast])
 
   useEffect(() => {
     if (state !== 'ok') return
@@ -40,7 +44,7 @@ export function MagicLinkPage() {
   }, [state, navigate])
 
   return (
-    <div className="bg-amber-mesh bg-grid-pattern grid min-h-[100svh] place-items-center bg-primary-50 px-4 py-10">
+    <div className="bg-violet-mesh bg-grid-pattern grid min-h-[100svh] place-items-center bg-primary-50 px-4 py-10">
       <div className="animate-fade-up flex w-full max-w-md flex-col items-center gap-5 rounded-3xl bg-white p-8 text-center shadow-card ring-1 ring-neutral-100">
         {state === 'verifying' && (
           <>
@@ -69,7 +73,7 @@ export function MagicLinkPage() {
 
         {state === 'invalid' && (
           <>
-            <div className="grid h-16 w-16 place-items-center rounded-3xl bg-status-error-bg text-status-error-fg">
+            <div className="grid h-16 w-16 place-items-center rounded-3xl bg-status-error-bg text-status-error">
               <AlertCircle size={32} />
             </div>
             <div>

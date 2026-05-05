@@ -26,27 +26,27 @@
   --color-neutral-900: #333132;
   --color-neutral-950: #272526;
 
-  /* Brand accent — amber: calidez de bar */
-  --color-accent-50: #fff8eb;
-  --color-accent-100: #feebc8;
-  --color-accent-200: #fdd89c;
-  --color-accent-300: #fbbf6b;
-  --color-accent-400: #f9a73c;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
-  --color-accent-700: #b45309;
-  --color-accent-800: #92400e;
-  --color-accent-900: #78350f;
+  /* Brand accent — violet Deenex (#695EDE) */
+  --color-accent-50: #f0eefd;
+  --color-accent-100: #e0ddfb;
+  --color-accent-200: #c1bcf7;
+  --color-accent-300: #9d96f1;
+  --color-accent-400: #7e74e7;
+  --color-accent-500: #695ede;
+  --color-accent-600: #5347c8;
+  --color-accent-700: #4239a3;
+  --color-accent-800: #332b80;
+  --color-accent-900: #231d5e;
 
-  /* Categorías */
+  /* Categorías (semánticas, no brand) */
   --color-cat-bebida: #0ea5e9;
   --color-cat-bebida-bg: #e0f2fe;
   --color-cat-comida: #f59e0b;
   --color-cat-comida-bg: #fef3c7;
-  --color-cat-extra: #a855f7;
-  --color-cat-extra-bg: #f3e8ff;
+  --color-cat-extra: #ec4899;
+  --color-cat-extra-bg: #fce7f3;
 
-  /* Status */
+  /* Semáforos */
   --color-status-success: #10b981;
   --color-status-success-bg: #d1fae5;
   --color-status-success-fg: #065f46;
@@ -60,7 +60,6 @@
   --color-status-error-bg: #ffe4e6;
   --color-status-error-fg: #9f1239;
 
-  /* Legacy secondary (compat con páginas Deenex) */
   --color-secondary: #f3f7f1;
 
   --font-sans: 'Satoshi', system-ui, -apple-system, sans-serif;
@@ -72,11 +71,13 @@
   --shadow-floating: 0 2px 8px -2px rgba(15, 15, 15, 0.08),
     0 16px 32px -12px rgba(15, 15, 15, 0.18);
   --shadow-cta: 0 1px 2px rgba(15, 15, 15, 0.06),
-    0 8px 16px -8px rgba(245, 158, 11, 0.55);
+    0 8px 16px -8px rgba(105, 94, 222, 0.55);
   --shadow-cta-neutral: 0 1px 2px rgba(15, 15, 15, 0.06),
     0 8px 16px -8px rgba(58, 56, 58, 0.45);
   --shadow-cta-success: 0 1px 2px rgba(15, 15, 15, 0.06),
     0 8px 16px -8px rgba(16, 185, 129, 0.5);
+  --shadow-toast: 0 4px 12px -2px rgba(15, 15, 15, 0.12),
+    0 24px 48px -16px rgba(15, 15, 15, 0.22);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -184,10 +185,10 @@ input:focus-visible {
 @keyframes glow-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 0 0 rgba(105, 94, 222, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 12px rgba(245, 158, 11, 0);
+    box-shadow: 0 0 0 12px rgba(105, 94, 222, 0);
   }
 }
 
@@ -203,6 +204,41 @@ input:focus-visible {
   100% {
     opacity: 0;
     transform: translateY(-60px) scale(0.6);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-in-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
   }
 }
 
@@ -230,6 +266,18 @@ input:focus-visible {
   animation: confetti-burst 1.4s var(--ease-out-expo) both;
 }
 
+@utility animate-toast-in {
+  animation: toast-in 280ms var(--ease-out-expo) both;
+}
+
+@utility animate-toast-in-mobile {
+  animation: toast-in-mobile 280ms var(--ease-out-expo) both;
+}
+
+@utility animate-shake {
+  animation: shake 320ms ease-in-out;
+}
+
 @utility shadow-card {
   box-shadow: var(--shadow-card);
 }
@@ -248,6 +296,9 @@ input:focus-visible {
 @utility shadow-cta-success {
   box-shadow: var(--shadow-cta-success);
 }
+@utility shadow-toast {
+  box-shadow: var(--shadow-toast);
+}
 
 .bg-grid-pattern {
   background-image: radial-gradient(
@@ -258,16 +309,16 @@ input:focus-visible {
   background-size: 24px 24px;
 }
 
-.bg-amber-mesh {
+.bg-violet-mesh {
   background-image:
     radial-gradient(
       ellipse at top left,
-      rgba(245, 158, 11, 0.18),
+      rgba(105, 94, 222, 0.16),
       transparent 50%
     ),
     radial-gradient(
       ellipse at bottom right,
-      rgba(168, 85, 247, 0.12),
+      rgba(236, 72, 153, 0.1),
       transparent 50%
     );
 }
@@ -281,7 +332,7 @@ input:focus-visible {
     ),
     radial-gradient(
       ellipse at bottom,
-      rgba(245, 158, 11, 0.12),
+      rgba(105, 94, 222, 0.12),
       transparent 60%
     );
 }

@@ -22,7 +22,7 @@ const categoryConfig = {
     Icon: Coffee,
     iconBg: 'bg-cat-extra-bg',
     iconText: 'text-cat-extra',
-    ringSelected: 'ring-cat-extra/50',
+    ringSelected: 'ring-cat-extra/40',
     label: 'Extra',
   },
 } as const
