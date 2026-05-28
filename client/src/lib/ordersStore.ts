@@ -1,14 +1,17 @@
 import { useSyncExternalStore } from 'react'
 import {
   computeOrderStatus,
-  mockOrders,
+  createSeedOrders,
+  isOrderExpired,
   type FindResult,
   type Order,
   type RetrievalEvent,
 } from '@/data/mockOrders'
+import { configStore, useConfig } from '@/lib/config'
 
-const STORAGE_KEY = 'bartender.orders.v1'
-const expiredTokens = new Set(['DNX-EXPIRED', 'DNX-EXP'])
+// v2: fechas de semilla relativas + expiración real. Descarta el cache viejo (v1)
+// con fechas fijas para que el vencimiento parametrizable funcione bien.
+const STORAGE_KEY = 'bartender.orders.v2'
 
 type Listener = () => void
 
@@ -23,15 +26,15 @@ class OrdersStore {
   }
 
   private load(): Order[] {
-    if (typeof window === 'undefined') return clone(mockOrders)
+    if (typeof window === 'undefined') return createSeedOrders()
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return clone(mockOrders)
+      if (!raw) return createSeedOrders()
       const parsed = JSON.parse(raw) as Order[]
-      if (!Array.isArray(parsed) || parsed.length === 0) return clone(mockOrders)
+      if (!Array.isArray(parsed) || parsed.length === 0) return createSeedOrders()
       return parsed
     } catch {
-      return clone(mockOrders)
+      return createSeedOrders()
     }
   }
 
@@ -65,9 +68,11 @@ class OrdersStore {
 
   findByToken(token: string): FindResult {
     const cleaned = token.trim().toUpperCase()
-    if (expiredTokens.has(cleaned)) return { ok: false, error: 'expired' }
     const order = this.orders.find((o) => o.token.toUpperCase() === cleaned)
     if (!order) return { ok: false, error: 'not-found' }
+    if (isOrderExpired(order, Date.now(), configStore.getQrExpiryMinutes())) {
+      return { ok: false, error: 'expired' }
+    }
     return { ok: true, order }
   }
 
@@ -84,6 +89,9 @@ class OrdersStore {
     if (idx === -1) return { ok: false, reason: 'Pedido no encontrado' }
 
     const order = this.orders[idx]
+    if (isOrderExpired(order, Date.now(), configStore.getQrExpiryMinutes())) {
+      return { ok: false, reason: 'El QR venció' }
+    }
     if (order.status === 'completed') {
       return { ok: false, reason: 'Pedido ya completado' }
     }
@@ -174,14 +182,10 @@ class OrdersStore {
   }
 
   resetToDemo() {
-    this.orders = clone(mockOrders)
+    this.orders = createSeedOrders()
     this.persist()
     this.emit()
   }
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
 }
 
 export const ordersStore = new OrdersStore()
@@ -197,11 +201,14 @@ export function useOrders(): Order[] {
 
 export function useOrder(token: string | undefined): FindResult {
   const orders = useOrders()
+  const { qrExpiryMinutes } = useConfig()
   if (!token) return { ok: false, error: 'not-found' }
   const cleaned = token.trim().toUpperCase()
-  if (expiredTokens.has(cleaned)) return { ok: false, error: 'expired' }
   const order = orders.find((o) => o.token.toUpperCase() === cleaned)
   if (!order) return { ok: false, error: 'not-found' }
+  if (isOrderExpired(order, Date.now(), qrExpiryMinutes)) {
+    return { ok: false, error: 'expired' }
+  }
   return { ok: true, order }
 }
 

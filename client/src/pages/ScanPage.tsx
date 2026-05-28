@@ -8,8 +8,11 @@ import {
   Sparkles,
   ShieldAlert,
   RefreshCcw,
+  Clock,
 } from 'lucide-react'
 import { useOrders, ordersStore } from '@/lib/ordersStore'
+import { isOrderExpired } from '@/data/mockOrders'
+import { useConfig, configStore, EXPIRY_OPTIONS } from '@/lib/config'
 import { cn } from '@/lib/cn'
 import { useToast } from '@/components/Toast'
 
@@ -39,6 +42,8 @@ export function ScanPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const orders = useOrders()
+  const { qrExpiryMinutes } = useConfig()
+  const nowMs = Date.now()
   const [mode, setMode] = useState<Mode>(() => (readAutostart() ? 'camera' : 'idle'))
   const [manualToken, setManualToken] = useState('')
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -194,8 +199,9 @@ export function ScanPage() {
       <div className="flex items-start gap-3 rounded-2xl bg-accent-50 p-4 text-accent-800 ring-1 ring-accent-100">
         <ShieldAlert size={18} className="mt-0.5 shrink-0 text-accent-500" />
         <p className="text-xs font-medium">
-          <span className="font-bold">Tip:</span> el QR vence cuando el pedido se completa.
-          Si no escanea, probá pedirle al cliente que aumente el brillo de la pantalla.
+          <span className="font-bold">Tip:</span> el QR vence al completarse el pedido o al
+          pasar la ventana configurada abajo. Si no escanea, pedile al cliente que aumente el
+          brillo de la pantalla.
         </p>
       </div>
 
@@ -214,24 +220,58 @@ export function ScanPage() {
             <RefreshCcw size={11} /> Reset
           </button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {orders.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => navigate(`/pedidos/${o.token}`)}
-              className="inline-flex h-11 items-center rounded-full bg-primary-100 px-4 text-xs font-bold tracking-widest text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-100 hover:text-accent-700 active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2"
-            >
-              {o.token}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => navigate('/pedidos/DNX-EXPIRED')}
-            className="inline-flex h-11 items-center rounded-full bg-status-error-bg px-4 text-xs font-bold tracking-widest text-status-error-fg transition-all duration-200 hover:-translate-y-0.5 hover:brightness-95 active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-status-error focus-visible:ring-offset-2"
+        {/* KONEX: vencimiento de QR parametrizable */}
+        <div className="mt-4">
+          <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+            <Clock size={12} className="text-accent-500" /> Vencimiento del QR
+          </p>
+          <div
+            className="mt-2 flex flex-wrap gap-1.5"
+            role="group"
+            aria-label="Ventana de vencimiento del QR"
           >
-            DNX-EXPIRED
-          </button>
+            {EXPIRY_OPTIONS.map((opt) => {
+              const active = qrExpiryMinutes === opt.minutes
+              return (
+                <button
+                  key={opt.minutes}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => configStore.setQrExpiryMinutes(opt.minutes)}
+                  className={cn(
+                    'h-9 rounded-full px-3.5 text-xs font-bold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2',
+                    active
+                      ? 'bg-gradient-to-br from-accent-400 to-accent-600 text-white shadow-cta'
+                      : 'bg-primary-100 text-neutral-600 hover:bg-accent-100 hover:text-accent-700',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {orders.map((o) => {
+            const expired = isOrderExpired(o, nowMs, qrExpiryMinutes)
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => navigate(`/pedidos/${o.token}`)}
+                className={cn(
+                  'inline-flex h-11 items-center gap-1.5 rounded-full px-4 text-xs font-bold tracking-widest transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2',
+                  expired
+                    ? 'bg-status-error-bg text-status-error-fg hover:brightness-95 focus-visible:ring-status-error'
+                    : 'bg-primary-100 text-neutral-700 hover:bg-accent-100 hover:text-accent-700 focus-visible:ring-accent-400',
+                )}
+              >
+                {expired && <Clock size={12} />}
+                {o.token}
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

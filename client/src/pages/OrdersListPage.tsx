@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Clock, MapPin, ListChecks, Search, X, Inbox } from 'lucide-react'
-import { type ProductStatus } from '@/data/mockOrders'
+import { ChevronRight, Clock, MapPin, ListChecks, Search, X, Inbox, Hourglass } from 'lucide-react'
+import { isOrderExpired, type ProductStatus } from '@/data/mockOrders'
 import { useOrders, useOrderStats } from '@/lib/ordersStore'
+import { useConfig } from '@/lib/config'
 import { StatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/cn'
 
@@ -20,6 +21,8 @@ type Filter = 'all' | ProductStatus
 export function OrdersListPage() {
   const orders = useOrders()
   const stats = useOrderStats()
+  const { qrExpiryMinutes } = useConfig()
+  const nowMs = Date.now()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
 
@@ -123,25 +126,35 @@ export function OrdersListPage() {
           {filtered.map((o, i) => {
             const total = o.products.reduce((s, p) => s + p.total, 0)
             const retrieved = o.products.reduce((s, p) => s + p.retrieved, 0)
+            const expired = isOrderExpired(o, nowMs, qrExpiryMinutes)
             return (
               <Link
                 key={o.id}
                 to={`/pedidos/${o.token}`}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className="animate-fade-up group flex items-center gap-4 rounded-3xl bg-white p-4 shadow-card transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 sm:p-5"
+                className={cn(
+                  'animate-fade-up group flex items-center gap-4 rounded-3xl bg-white p-4 shadow-card transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 sm:p-5',
+                  expired && 'opacity-70',
+                )}
               >
                 <div
                   className={cn(
                     'grid h-14 w-14 shrink-0 place-items-center rounded-2xl font-mono text-xs font-bold tracking-widest transition-all duration-300',
-                    avatarStyles[o.status],
+                    expired ? 'bg-status-error-bg text-status-error-fg' : avatarStyles[o.status],
                   )}
                 >
                   {o.token.slice(-3)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-bold text-neutral-900">{o.customerName}</p>
-                    <StatusBadge status={o.status} />
+                    {expired ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-status-error-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-status-error-fg">
+                        <Hourglass size={10} /> Vencido
+                      </span>
+                    ) : (
+                      <StatusBadge status={o.status} />
+                    )}
                   </div>
                   <p className="mt-0.5 font-mono text-xs font-semibold tracking-widest text-neutral-500">
                     {o.token}

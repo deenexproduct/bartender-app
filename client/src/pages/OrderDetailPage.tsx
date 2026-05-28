@@ -11,8 +11,9 @@ import {
   Hourglass,
   RefreshCw,
 } from 'lucide-react'
-import { computeOrderStatus, type OrderProduct } from '@/data/mockOrders'
+import { computeOrderStatus, orderExpiryMs, type OrderProduct } from '@/data/mockOrders'
 import { ordersStore, useOrder } from '@/lib/ordersStore'
+import { useConfig } from '@/lib/config'
 import { ProductRow } from '@/components/ProductRow'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -54,6 +55,17 @@ function clearSelection(token: string) {
   }
 }
 
+// KONEX: etiqueta legible del tiempo restante hasta el vencimiento del QR.
+function formatVence(expiryMs: number, nowMs: number): string {
+  const diff = expiryMs - nowMs
+  if (diff <= 0) return 'QR vencido'
+  const mins = Math.round(diff / 60_000)
+  if (mins < 60) return `Vence en ${mins} min`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m ? `Vence en ${h} h ${m} min` : `Vence en ${h} h`
+}
+
 export function OrderDetailPage() {
   const { token = '' } = useParams()
   const navigate = useNavigate()
@@ -64,6 +76,7 @@ export function OrderDetailPage() {
   // significa que se entró directo a esta URL (sin historial in-app) → ir a "/".
   const goBack = () => (location.key === 'default' ? navigate('/') : navigate(-1))
   const { operator } = useAuth()
+  const { qrExpiryMinutes } = useConfig()
   const result = useOrder(token)
   const order = result.ok ? result.order : null
 
@@ -121,6 +134,8 @@ export function OrderDetailPage() {
   }
 
   const isCompleted = order!.status === 'completed'
+  const expiryMs = orderExpiryMs(order!, qrExpiryMinutes)
+  const venceLabel = !isCompleted && expiryMs !== null ? formatVence(expiryMs, Date.now()) : null
   const totalItems = order!.products.reduce((s, p) => s + p.total, 0)
   const retrievedItems = order!.products.reduce((s, p) => s + p.retrieved, 0)
   const selectedItems = Object.values(selection).reduce((s, n) => s + n, 0)
@@ -255,6 +270,13 @@ export function OrderDetailPage() {
                 </span>
               </div>
             </dl>
+
+            {venceLabel && (
+              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-neutral-700 ring-1 ring-neutral-100 backdrop-blur-sm">
+                <Hourglass size={13} className="text-accent-500" />
+                {venceLabel}
+              </div>
+            )}
           </div>
 
           <div className="border-t border-neutral-100 px-5 py-4 sm:px-7 sm:py-5">
