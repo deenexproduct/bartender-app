@@ -15,11 +15,31 @@ import { useToast } from '@/components/Toast'
 
 type Mode = 'idle' | 'camera' | 'manual'
 
+// UX-01: recordar si el operador ya usó la cámara para auto-reanudarla
+// en el próximo cliente (evita un tap por persona en el bucle central).
+const AUTOSTART_KEY = 'bartender.scan.autostart'
+
+function readAutostart(): boolean {
+  try {
+    return localStorage.getItem(AUTOSTART_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeAutostart(on: boolean) {
+  try {
+    localStorage.setItem(AUTOSTART_KEY, on ? '1' : '0')
+  } catch {
+    /* noop */
+  }
+}
+
 export function ScanPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const orders = useOrders()
-  const [mode, setMode] = useState<Mode>('idle')
+  const [mode, setMode] = useState<Mode>(() => (readAutostart() ? 'camera' : 'idle'))
   const [manualToken, setManualToken] = useState('')
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const containerId = 'qr-reader'
@@ -44,6 +64,7 @@ export function ScanPage() {
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'No pudimos acceder a la cámara.'
         toast.error('Cámara bloqueada', msg + ' Probá ingresando el código a mano.')
+        writeAutostart(false) // no reintentar la cámara en bucle si falló/se negó el permiso
         setMode('idle')
       })
     return () => {
@@ -114,7 +135,13 @@ export function ScanPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
-          onClick={() => setMode((m) => (m === 'camera' ? 'idle' : 'camera'))}
+          onClick={() =>
+            setMode((m) => {
+              const next = m === 'camera' ? 'idle' : 'camera'
+              writeAutostart(next === 'camera')
+              return next
+            })
+          }
           className={cn(
             'flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold transition-all duration-200',
             'focus-visible:ring-2 focus-visible:ring-offset-2',

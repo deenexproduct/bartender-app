@@ -51,29 +51,29 @@ export function ConfirmDialog({
 }: Props) {
   const cfg = variantConfig[variant]
   const Icon = cfg.Icon
-  const confirmRef = useRef<HTMLButtonElement>(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
+    // UX-12: solo Escape cancela. Se quita el atajo Enter→confirmar para que un
+    // lector de código por hardware (emite Enter al escanear) no dispare por
+    // accidente una acción destructiva con el diálogo abierto.
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         onCancel()
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        onConfirm()
       }
     }
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
-    // Focus confirm button for keyboard users (but Enter requires deliberate press)
-    const t = window.setTimeout(() => confirmRef.current?.focus(), 50)
+    // UX-12: enfocar la opción segura (Cancelar), no la destructiva.
+    const t = window.setTimeout(() => cancelRef.current?.focus(), 50)
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
       window.clearTimeout(t)
     }
-  }, [open, onCancel, onConfirm])
+  }, [open, onCancel])
 
   if (!open) return null
 
@@ -117,7 +117,6 @@ export function ConfirmDialog({
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
           <button
-            ref={confirmRef}
             type="button"
             onClick={onConfirm}
             className={cn(
@@ -128,6 +127,7 @@ export function ConfirmDialog({
             {confirmLabel}
           </button>
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             className="flex-1 rounded-full bg-primary-100 px-5 py-3.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-primary-200 focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2"

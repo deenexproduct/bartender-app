@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -24,7 +24,12 @@ import { cn } from '@/lib/cn'
 export function OrderDetailPage() {
   const { token = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const toast = useToast()
+
+  // UX-03: volver al origen real (lista o escaneo). location.key === 'default'
+  // significa que se entró directo a esta URL (sin historial in-app) → ir a "/".
+  const goBack = () => (location.key === 'default' ? navigate('/') : navigate(-1))
   const { operator } = useAuth()
   const result = useOrder(token)
   const order = result.ok ? result.order : null
@@ -143,7 +148,7 @@ export function OrderDetailPage() {
     <>
       <div className="animate-fade-up mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
         <button
-          onClick={() => navigate('/')}
+          onClick={goBack}
           className="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-1 text-sm font-semibold text-neutral-500 transition-colors duration-150 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <ArrowLeft size={16} /> Volver
