@@ -9,9 +9,8 @@ import {
 } from '@/data/mockOrders'
 import { configStore, useConfig } from '@/lib/config'
 
-// v2: fechas de semilla relativas + expiración real. Descarta el cache viejo (v1)
-// con fechas fijas para que el vencimiento parametrizable funcione bien.
-const STORAGE_KEY = 'bartender.orders.v2'
+// v3: expiresAt congelado por pedido (UX-38, no retroactivo). Descarta cache previo.
+const STORAGE_KEY = 'bartender.orders.v3'
 
 type Listener = () => void
 
@@ -26,15 +25,15 @@ class OrdersStore {
   }
 
   private load(): Order[] {
-    if (typeof window === 'undefined') return createSeedOrders()
+    if (typeof window === 'undefined') return createSeedOrders(configStore.getQrExpiryMinutes())
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return createSeedOrders()
+      if (!raw) return createSeedOrders(configStore.getQrExpiryMinutes())
       const parsed = JSON.parse(raw) as Order[]
-      if (!Array.isArray(parsed) || parsed.length === 0) return createSeedOrders()
+      if (!Array.isArray(parsed) || parsed.length === 0) return createSeedOrders(configStore.getQrExpiryMinutes())
       return parsed
     } catch {
-      return createSeedOrders()
+      return createSeedOrders(configStore.getQrExpiryMinutes())
     }
   }
 
@@ -182,7 +181,7 @@ class OrdersStore {
   }
 
   resetToDemo() {
-    this.orders = createSeedOrders()
+    this.orders = createSeedOrders(configStore.getQrExpiryMinutes())
     this.persist()
     this.emit()
   }

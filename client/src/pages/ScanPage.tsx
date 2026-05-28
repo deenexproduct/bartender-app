@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useOrders, ordersStore } from '@/lib/ordersStore'
 import { isOrderExpired } from '@/data/mockOrders'
-import { useConfig, configStore, EXPIRY_OPTIONS } from '@/lib/config'
+import { useConfig } from '@/lib/config'
 import { cn } from '@/lib/cn'
 import { useToast } from '@/components/Toast'
 
@@ -220,38 +220,6 @@ export function ScanPage() {
             <RefreshCcw size={11} /> Reset
           </button>
         </div>
-        {/* KONEX: vencimiento de QR parametrizable */}
-        <div className="mt-4">
-          <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-            <Clock size={12} className="text-accent-500" /> Vencimiento del QR
-          </p>
-          <div
-            className="mt-2 flex flex-wrap gap-1.5"
-            role="group"
-            aria-label="Ventana de vencimiento del QR"
-          >
-            {EXPIRY_OPTIONS.map((opt) => {
-              const active = qrExpiryMinutes === opt.minutes
-              return (
-                <button
-                  key={opt.minutes}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => configStore.setQrExpiryMinutes(opt.minutes)}
-                  className={cn(
-                    'h-9 rounded-full px-3.5 text-xs font-bold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2',
-                    active
-                      ? 'bg-gradient-to-br from-accent-400 to-accent-600 text-white shadow-cta'
-                      : 'bg-primary-100 text-neutral-600 hover:bg-accent-100 hover:text-accent-700',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         <div className="mt-4 flex flex-wrap gap-2">
           {orders.map((o) => {
             const expired = isOrderExpired(o, nowMs, qrExpiryMinutes)

@@ -17,12 +17,29 @@ export function QuantityStepper({ value, min = 0, max, onChange, disabled, label
   const isMax = value >= max
   const suffix = label ? ` de ${label}` : ''
 
+  // UX-39: ingreso numérico directo (clamp a [min, max]) para cargar cantidades
+  // grandes sin tocar "+" decenas de veces.
+  const handleInput = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '')
+    if (digits === '') {
+      onChange(min)
+      return
+    }
+    const n = parseInt(digits, 10)
+    onChange(Math.min(max, Math.max(min, n)))
+  }
+
   return (
     <div
       role="group"
       aria-label={`Cantidad a entregar${suffix}`}
       className="inline-flex select-none items-center gap-1.5 rounded-full bg-white p-1 ring-1 ring-neutral-100 shadow-card"
     >
+      {/* UX-34: anuncio del valor para lectores de pantalla (cubre +/- y edición directa) */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {`${value} seleccionado${value === 1 ? '' : 's'}${suffix}`}
+      </span>
+
       <button
         type="button"
         aria-label={`Restar uno${suffix}`}
@@ -32,15 +49,19 @@ export function QuantityStepper({ value, min = 0, max, onChange, disabled, label
       >
         <Minus size={18} strokeWidth={2.5} />
       </button>
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        aria-label={`${value} seleccionado${value === 1 ? '' : 's'}${suffix}`}
-        className="min-w-[2.5ch] text-center text-xl font-bold tabular-nums text-neutral-900 sm:text-2xl"
-      >
-        {value}
-      </div>
+
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        aria-label={`Cantidad${suffix} (máximo ${max})`}
+        value={value}
+        disabled={disabled}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => handleInput(e.target.value)}
+        className="w-[3ch] rounded-lg bg-transparent text-center text-xl font-bold tabular-nums text-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-accent-400 disabled:opacity-40 sm:text-2xl"
+      />
+
       <button
         type="button"
         aria-label={`Sumar uno${suffix}`}

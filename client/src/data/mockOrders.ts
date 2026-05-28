@@ -37,11 +37,13 @@ export type FindResult =
 
 // Pedidos semilla con fechas RELATIVAS al momento de carga, para que la
 // expiración parametrizable se pueda demostrar de verdad (no fechas fijas viejas).
-export function createSeedOrders(): Order[] {
+// UX-38: `windowMin` es el vencimiento por defecto al CREAR el QR; se congela en
+// `expiresAt` por pedido (no se recalcula retroactivamente al cambiar el setting global).
+export function createSeedOrders(windowMin: number): Order[] {
   const now = Date.now()
   const minAgo = (m: number) => new Date(now - m * 60000).toISOString()
 
-  return [
+  const seed: Order[] = [
     {
       id: 'ord_001',
       token: 'DNX-A1B2C3',
@@ -127,10 +129,14 @@ export function createSeedOrders(): Order[] {
       ],
     },
   ]
-}
 
-// Se mantiene un snapshot por compatibilidad, pero el store usa createSeedOrders().
-export const mockOrders: Order[] = createSeedOrders()
+  // UX-38: congelar expiresAt al crear (salvo completados o los que ya lo traen).
+  return seed.map((o) =>
+    o.expiresAt || o.status === 'completed' || windowMin <= 0
+      ? o
+      : { ...o, expiresAt: new Date(Date.parse(o.createdAt) + windowMin * 60_000).toISOString() },
+  )
+}
 
 export function computeOrderStatus(products: OrderProduct[]): ProductStatus {
   const totalQty = products.reduce((s, p) => s + p.total, 0)

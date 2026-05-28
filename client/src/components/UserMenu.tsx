@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogOut, Mail, Sparkles } from 'lucide-react'
+import { LogOut, Mail, Sparkles, Clock } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useConfig, configStore, EXPIRY_OPTIONS } from '@/lib/config'
 import { cn } from '@/lib/cn'
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
 
 export function UserMenu({ variant }: Props) {
   const { operator, signOut } = useAuth()
+  const { qrExpiryMinutes } = useConfig()
   const [open, setOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -107,6 +109,42 @@ export function UserMenu({ variant }: Props) {
                 day: '2-digit',
                 month: '2-digit',
               })}
+            </p>
+          </div>
+
+          {/* Ajustes — UX-37: el vencimiento del QR vive acá, no en el panel de demo */}
+          <div className="border-t border-neutral-100 px-4 py-3">
+            <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+              <Clock size={11} className="text-accent-500" /> Vencimiento del QR
+            </p>
+            <div
+              className="mt-2 flex flex-wrap gap-1.5"
+              role="group"
+              aria-label="Vencimiento por defecto de los nuevos QR"
+            >
+              {EXPIRY_OPTIONS.map((opt) => {
+                const active = qrExpiryMinutes === opt.minutes
+                return (
+                  <button
+                    key={opt.minutes}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => configStore.setQrExpiryMinutes(opt.minutes)}
+                    className={cn(
+                      'h-8 rounded-full px-3 text-[11px] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2',
+                      active
+                        ? 'bg-gradient-to-br from-accent-400 to-accent-600 text-white shadow-cta'
+                        : 'bg-primary-100 text-neutral-600 hover:bg-accent-100 hover:text-accent-700',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-[10px] font-medium text-neutral-500">
+              Aplica a nuevos QR. No cambia los ya emitidos; usá «Reset» en Escanear para
+              regenerar los de prueba.
             </p>
           </div>
 
