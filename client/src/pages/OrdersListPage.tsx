@@ -48,7 +48,9 @@ export function OrdersListPage() {
         <p className="text-base text-neutral-500">
           {stats.total === 0
             ? 'Aún no hay pedidos.'
-            : `${stats.total} pedido${stats.total === 1 ? '' : 's'} en total`}
+            : query.trim() !== '' || filter !== 'all'
+              ? `Mostrando ${filtered.length} de ${stats.total} pedido${stats.total === 1 ? '' : 's'}`
+              : `${stats.total} pedido${stats.total === 1 ? '' : 's'} en total`}
         </p>
       </div>
 

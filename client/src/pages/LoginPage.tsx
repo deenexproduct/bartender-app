@@ -90,7 +90,8 @@ export function LoginPage() {
                   type="email"
                   inputMode="email"
                   autoComplete="email"
-                  autoFocus
+                  // UX-29: autoFocus solo en desktop; en mobile abría el teclado tapando el CTA
+                  autoFocus={typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 768px)').matches}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="vos@deenex.com"
