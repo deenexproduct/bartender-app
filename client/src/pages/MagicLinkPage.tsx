@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { clearPendingMagicLink, readPendingMagicLink, useAuth } from '@/lib/auth'
@@ -12,6 +12,10 @@ export function MagicLinkPage() {
   const [params] = useSearchParams()
   const { signIn, operator, ready } = useAuth()
   const [state, setState] = useState<State>('verifying')
+  // UX-41: procesar el token UNA sola vez. Sin esto, el doble-render de StrictMode
+  // (o cualquier re-run del efecto) corre la validación de nuevo cuando el pending
+  // ya fue consumido → dispara un "Link inválido" falso junto al "Sesión iniciada".
+  const processedRef = useRef(false)
 
   useEffect(() => {
     if (!ready) return
@@ -20,6 +24,9 @@ export function MagicLinkPage() {
       setState('ok')
       return
     }
+
+    if (processedRef.current) return
+    processedRef.current = true
 
     const token = params.get('token')
     const email = params.get('email')

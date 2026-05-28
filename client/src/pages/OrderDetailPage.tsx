@@ -83,6 +83,9 @@ export function OrderDetailPage() {
   const [selection, setSelection] = useState<Selection>(() => readSelection(token))
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [completedShown, setCompletedShown] = useState(false)
+  // UX-42: avisar "Pedido ya completado" SOLO si llegó completo (escaneaste un QR cerrado),
+  // no cuando lo completás vos acá (en ese caso ya navegás a la confirmación).
+  const wasCompletedOnArrival = useRef(order?.status === 'completed')
 
   // UX-04: persistir cada cambio de selección para sobrevivir nav accidental / refresh.
   useEffect(() => {
@@ -102,14 +105,14 @@ export function OrderDetailPage() {
   }, [order?.history.length, token])
 
   useEffect(() => {
-    if (order && order.status === 'completed' && !completedShown) {
+    if (wasCompletedOnArrival.current && !completedShown) {
       setCompletedShown(true)
       toast.warning(
         'Pedido ya completado',
         'No queda nada por entregar. Podés revisar el detalle.',
       )
     }
-  }, [order, completedShown, toast])
+  }, [completedShown, toast])
 
   if (!result.ok && result.error === 'expired') {
     return (
