@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -21,6 +21,39 @@ import { useToast } from '@/components/Toast'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 
+// UX-04: persistir la selección en curso (por token) en sessionStorage para que un
+// tap accidental en la nav inferior — o un refresh — no borre lo que se venía cargando.
+type Selection = Record<string, number>
+
+function selectionKey(token: string) {
+  return `bartender.selection.${token.trim().toUpperCase()}`
+}
+function readSelection(token: string): Selection {
+  try {
+    const raw = sessionStorage.getItem(selectionKey(token))
+    const parsed = raw ? JSON.parse(raw) : null
+    return parsed && typeof parsed === 'object' ? (parsed as Selection) : {}
+  } catch {
+    return {}
+  }
+}
+function writeSelection(token: string, sel: Selection) {
+  try {
+    const hasAny = Object.values(sel).some((n) => n > 0)
+    if (hasAny) sessionStorage.setItem(selectionKey(token), JSON.stringify(sel))
+    else sessionStorage.removeItem(selectionKey(token))
+  } catch {
+    /* noop */
+  }
+}
+function clearSelection(token: string) {
+  try {
+    sessionStorage.removeItem(selectionKey(token))
+  } catch {
+    /* noop */
+  }
+}
+
 export function OrderDetailPage() {
   const { token = '' } = useParams()
   const navigate = useNavigate()
@@ -34,14 +67,26 @@ export function OrderDetailPage() {
   const result = useOrder(token)
   const order = result.ok ? result.order : null
 
-  const [selection, setSelection] = useState<Record<string, number>>({})
+  const [selection, setSelection] = useState<Selection>(() => readSelection(token))
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [completedShown, setCompletedShown] = useState(false)
 
-  // Reset selection when order updates externally (e.g., after retrieve)
+  // UX-04: persistir cada cambio de selección para sobrevivir nav accidental / refresh.
   useEffect(() => {
-    setSelection({})
-  }, [order?.history.length])
+    writeSelection(token, selection)
+  }, [token, selection])
+
+  // Resetear la selección solo cuando aparece un retiro NUEVO (el historial crece),
+  // no en el montaje — para no pisar la selección restaurada de sessionStorage.
+  const prevHistoryLen = useRef(order?.history.length ?? 0)
+  useEffect(() => {
+    const len = order?.history.length ?? 0
+    if (len > prevHistoryLen.current) {
+      setSelection({})
+      clearSelection(token)
+    }
+    prevHistoryLen.current = len
+  }, [order?.history.length, token])
 
   useEffect(() => {
     if (order && order.status === 'completed' && !completedShown) {
@@ -121,26 +166,45 @@ export function OrderDetailPage() {
   const finalizeDelivery = () => {
     setConfirmOpen(false)
 
-    const result = ordersStore.retrieveProducts({
+    const res = ordersStore.retrieveProducts({
       token: order!.token,
       operator: operator?.name ?? 'Operador',
       point: order!.pickupPoint ?? 'Mostrador',
       selection,
     })
 
-    if (!result.ok) {
-      toast.error('No pudimos confirmar', result.reason)
+    if (!res.ok) {
+      toast.error('No pudimos confirmar', res.reason)
       return
     }
 
-    const totalDelivered = result.event.items.reduce((s, i) => s + i.qty, 0)
-    toast.success(
-      `Entregaste ${totalDelivered} producto${totalDelivered === 1 ? '' : 's'}`,
-      wouldComplete ? 'El pedido quedó completo.' : 'Quedan productos por retirar.',
-    )
+    clearSelection(order!.token) // UX-04: la entrega se confirmó, limpiamos lo persistido
+    const eventId = res.event.id
+    const wasComplete = wouldComplete
+    const totalDelivered = res.event.items.reduce((s, i) => s + i.qty, 0)
+
+    // UX-02: red de seguridad — permitir deshacer el retiro recién confirmado.
+    toast.show({
+      variant: 'success',
+      title: `Entregaste ${totalDelivered} producto${totalDelivered === 1 ? '' : 's'}`,
+      description: wasComplete ? 'El pedido quedó completo.' : 'Quedan productos por retirar.',
+      duration: 7000,
+      action: {
+        label: 'Deshacer',
+        onClick: () => {
+          const undo = ordersStore.undoRetrieval(order!.token, eventId)
+          if (undo.ok) {
+            toast.info('Entrega deshecha', 'Restauramos las cantidades del pedido.')
+            navigate(`/pedidos/${encodeURIComponent(order!.token)}`)
+          } else {
+            toast.error('No se pudo deshacer', undo.reason)
+          }
+        },
+      },
+    })
 
     navigate(
-      `/pedidos/${encodeURIComponent(order!.token)}/confirmacion?items=${totalDelivered}&done=${wouldComplete ? '1' : '0'}`,
+      `/pedidos/${encodeURIComponent(order!.token)}/confirmacion?items=${totalDelivered}&done=${wasComplete ? '1' : '0'}`,
     )
   }
 

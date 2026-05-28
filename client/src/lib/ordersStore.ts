@@ -130,6 +130,49 @@ class OrdersStore {
     return { ok: true, event }
   }
 
+  // UX-02: revierte un retiro por id de evento (red de seguridad / "Deshacer").
+  // Resta las cantidades de ese evento y lo quita del historial.
+  undoRetrieval(
+    token: string,
+    eventId: string,
+  ): { ok: true } | { ok: false; reason: string } {
+    const cleaned = token.trim().toUpperCase()
+    const idx = this.orders.findIndex((o) => o.token.toUpperCase() === cleaned)
+    if (idx === -1) return { ok: false, reason: 'Pedido no encontrado' }
+
+    const order = this.orders[idx]
+    const event = order.history.find((e) => e.id === eventId)
+    if (!event) return { ok: false, reason: 'No encontramos esa entrega' }
+
+    const decByProduct = new Map<string, number>()
+    event.items.forEach((it) =>
+      decByProduct.set(it.productId, (decByProduct.get(it.productId) ?? 0) + it.qty),
+    )
+
+    const updatedProducts = order.products.map((p) => {
+      const dec = decByProduct.get(p.id) ?? 0
+      if (dec <= 0) return p
+      return { ...p, retrieved: Math.max(0, p.retrieved - dec) }
+    })
+
+    const nextOrder: Order = {
+      ...order,
+      products: updatedProducts,
+      status: computeOrderStatus(updatedProducts),
+      history: order.history.filter((e) => e.id !== eventId),
+    }
+
+    this.orders = [
+      ...this.orders.slice(0, idx),
+      nextOrder,
+      ...this.orders.slice(idx + 1),
+    ]
+    this.persist()
+    this.emit()
+
+    return { ok: true }
+  }
+
   resetToDemo() {
     this.orders = clone(mockOrders)
     this.persist()
