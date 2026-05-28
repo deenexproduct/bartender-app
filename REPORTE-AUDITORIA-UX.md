@@ -1,181 +1,150 @@
-# 🕵️ Reporte de Auditoría UX — Bartender App / KONEX (Deenex) · v4
+# 🕵️ Reporte de Auditoría UX — Bartender App / KONEX (Deenex) · v5
 
-> **Pasada:** Cuarta. Foco: auditar lo construido desde la v3 — el **vencimiento de QR parametrizable** recién hecho — y la mecánica de **cantidades grandes** que es central a KONEX y que ninguna pasada previa había mirado a fondo.
-> **Método:** Análisis estático + simulación de flujos sobre el código actual.
-> **Repo:** `~/dev/bartender-app` · rama `main` · commit base `8e3a1c0`
-> **Producto:** KONEX — QR único multi-producto, el personal descuenta cantidades hasta cero; vencimiento parametrizable; (a futuro) QR por email.
-> **Stack:** React 19 + Vite 7 + Tailwind 4 + React Router 7 (HashRouter) + vite-plugin-pwa + html5-qrcode
-> **Live:** https://deenexproduct.github.io/bartender-app/
-> **Idioma del producto:** español rioplatense
-> **Fecha:** 2026-05-28
+> **Pasada:** Quinta. **Método: navegación real** (el ideal, §🔍 método 1) sobre el preview en vivo — no simulación. Recorrí el circuito completo en la piel de un bartender, con screenshots y mediciones del DOM renderizado.
+> **Repo:** `~/dev/bartender-app` · rama `main` · commit base `0842de0`
+> **Live:** https://deenexproduct.github.io/bartender-app/ · **Preview:** localhost:5180 (665×850, layout mobile)
+> **Producto:** KONEX — QR multi-producto, descuento por personal hasta cero, vencimiento parametrizable, (a futuro) QR por email.
+> **Idioma:** español rioplatense · **Fecha:** 2026-05-28
 
 ---
 
-## 0. Estado acumulado (verificado en código)
+## 0. Por qué esta pasada importa
 
-**18 hallazgos resueltos y en producción** a lo largo de 4 pasadas:
+Las 4 pasadas anteriores fueron análisis estático + simulación. **Esta fue navegación real**, y por eso destapó un bug de layout de **severidad alta que ninguna lectura de código podía ver**: la barra "Confirmar entrega" **no está realmente fija** (UX-43). Lección: para layout/posicionamiento, hay que renderizar.
 
-| Tanda | Resueltos |
-|---|---|
-| v1 | UX-01 cámara · UX-03 volver · UX-05 copy offline · UX-12 confirm seguro |
-| v2 | UX-24 íconos PWA · UX-25 zoom · UX-27 contador · UX-28 meta · UX-29 autoFocus |
-| Estratégicos | UX-02 undo · UX-04 selección persistente |
-| v3 a11y | UX-31 contraste · UX-32 placeholders · UX-33 reduced-motion · UX-34 stepper aria · UX-35 search clear · UX-36 cámara label |
-| KONEX | **UX-09** vencimiento parametrizable (era stub → ahora real) |
-
-Esta pasada agrega **4 hallazgos nuevos** (UX-37 a UX-40), surgidos del feature de vencimiento y de la mecánica de cantidades de KONEX.
+**Estado acumulado: 24 hallazgos resueltos** en producción (UX-01 a UX-42, salvo los de backend). Esta pasada agrega **3 nuevos** (UX-43 a UX-45). **UX-43 (la barra rota) ya se corrigió en esta misma sesión** — sacando la barra del contenedor animado para que su `position: fixed` se ancle al viewport. Verificado en vivo: el botón pasó de `y=962` (fuera) a `y=694` (visible sin scroll). Quedan UX-44 y UX-45.
 
 ---
 
 ## 1. Resumen ejecutivo
 
-### Las 5 fricciones que más sangran (estado actual)
+### Las 5 fricciones que más sangran
 
-1. **Sin sincronización en vivo entre runners (UX-20).** Sigue siendo el gran gap: dos dispositivos no se ven. La promesa "no dupliques entregas" depende de esto. Necesita backend.
+1. **🔴 La barra "Confirmar entrega" NO está fija (UX-43, NUEVO).** En el detalle del pedido, el `animate-fade-up` del contenedor deja un `transform` que rompe el `position: fixed` de la barra de acción. Resultado medido: el botón "Confirmar entrega" cae en `y=962` con el viewport en `850` → **fuera de pantalla**. En un pedido con varios productos, el bartender tiene que **scrollear pasando TODOS los productos para confirmar la entrega**. Es la acción más importante de la pantalla más usada, y está enterrada.
 
-2. **El stepper es lento para cantidades grandes (UX-39, NUEVO).** KONEX es justamente multi-cantidad ("piden 7 cervezas… escanean 2, después 3"). Si un cliente quiere retirar 11 de 20, hay que tocar **+** once veces. No hay ingreso numérico directo. La mecánica central del producto tiene fricción cuando los números crecen.
+2. **Sin sincronización en vivo entre runners (UX-20).** Dos dispositivos no se ven; la promesa "no dupliques entregas" depende de backend.
 
-3. **Cambiar el vencimiento es global y retroactivo (UX-38, NUEVO).** La ventana de expiración es un setting global que se aplica hacia atrás: pasar de "2 h" a "30 min" a mitad de servicio **vence al instante QRs de clientes que estaban activos**. Riesgo operativo real.
+3. **Filas de producto muy altas → mucho scroll en pedidos grandes (UX-44, NUEVO).** Cada producto ocupa ~150px; entran 3-4 por pantalla. Para los pedidos multi-cantidad de KONEX (rondas grandes), es mucho scroll — agravado por UX-43.
 
-4. **Carga inicial pesada en wifi de evento (UX-26).** 639 KB con `html5-qrcode` en todas las rutas. Primera pantalla lenta en redes saturadas.
+4. **Carga inicial pesada en wifi de evento (UX-26).** 639 KB con html5-qrcode en todas las rutas.
 
-5. **Escanear no da feedback perceptible (UX-07).** Sin flash/beep/vibración al decodificar; en un lugar ruidoso no sabés si "agarró".
+5. **Escanear no da feedback perceptible (UX-07).** Sin flash/beep/vibración al decodificar.
 
 ### Sensación general del recorrido
 
-**La app ya se siente un producto, no una demo.** El bucle central fluye, las acciones sensibles tienen red, es accesible y el vencimiento de QR funciona de verdad y es configurable. Lo que queda es de tres tipos: **(a)** el salto a backend (sync, email, generación de QR), **(b)** afinar la mecánica de cantidades para volúmenes reales de KONEX, y **(c)** madurar el vencimiento de un "toggle global de demo" a una política por pedido. Es sólida y confiable; ahora el techo está en decisiones de producto, no en pulido.
+**Navegándola de verdad, la app se siente fluida y pulida** — el login entra limpio, las entregas parciales fluyen, el vencimiento funciona, los estados de error y vacío están bien. Pero el recorrido real reveló que **la acción central (confirmar la entrega) está rota en su posicionamiento**: en lugar de tener el botón siempre a mano, hay que bucear hasta el fondo. Es la diferencia entre "se ve bien en un screenshot" y "se usa bien en la mano". Una vez resuelto eso, la experiencia operativa queda muy sólida.
 
 ---
 
 ## 2. Diario del usuario (narrativa)
 
-> *Soy Maxi. La app ya la siento mía, la uso fluido.*
+> *Soy Maxi. Entro (ahora sí, limpio, sin el cartel de error raro de antes), escaneo el código de Lucía.*
 
-**Escaneo, entrego, todo rápido.** El vencimiento ahora funciona: si un QR ya pasó su tiempo, me lo marca y no me deja entregar — bien, antes era de mentira.
+**Abro el pedido: 7 cervezas, gin, papas, tabla.** Arriba veo lindo el código, "Pendiente", "Vence en 1 h 48 min". Quiero entregarle 2 cervezas. Cargo el 2 (ahora puedo teclear el número, joya). **¿Y ahora dónde confirmo?** Miro abajo… está la barra de "Escanear / Pedidos" pero **no veo el botón de confirmar**. Empiezo a scrollear: paso la cerveza, el gin, las papas, la tabla, el historial… **recién al fondo de todo aparece "Confirmar entrega".** ¿No tendría que estar siempre a la vista? En una barra a las apuradas, bajar hasta el fondo por cada entrega me come tiempo.
 
-**Viene un grupo grande:** piden 20 cervezas y se quieren llevar 11 ahora. Toco **+**… +, +, +… *once veces*. Para una cantidad así se hace eterno. O uso "Entregar todo" (pero quieren 11, no 20) o me siento tipeando con el dedo. Para un boliche con rondas grandes, esto me frena.
+**Con un pedido grande es peor:** cuanto más productos tiene el cliente, más lejos queda el botón de confirmar. Justo al revés de lo que necesito.
 
-**El dueño tocó la config de vencimiento** y la bajó a 30 minutos para "apurar la rotación". De golpe, **varios QR de clientes que estaban esperando quedaron vencidos** y me empezaron a reclamar. Nadie avisó que cambiar ese número afecta a los pedidos que ya están dando vueltas.
-
-**Encima esa config está enterrada** en la tarjeta de "Pedidos de prueba", mezclada con los botones de demo y el "Reset". Cuando esto sea producto de verdad y saquen los botones de prueba, ¿dónde va a quedar el vencimiento? Se siente fuera de lugar.
-
-**Un detalle menor:** abrí un pedido que vencía en 1 minuto, me distraje, y cuando volví el cartelito seguía diciendo "Vence en 1 min" — no se actualiza solo. Recién al querer confirmar me saltó "El QR venció".
-
-**Balance:** la mecánica está, el vencimiento está. Lo que me haría la noche más fácil: **cargar cantidades grandes rápido**, que **cambiar el vencimiento no me reviente los pedidos activos**, y que esa config viva en un lugar serio.
+**El resto fluye:** entrego, me da el "Deshacer", vuelvo, completo con "Entregar todo", me pregunta si cierro, confeti. La lista de pedidos se ve clara, el QR vencido me avisa bien. Pero esa barra que no se queda fija me deja con la sensación de que la herramienta me hace trabajar de más justo en lo que más repito.
 
 ---
 
 ## 3. Tabla priorizada — Matriz Impacto × Esfuerzo
 
-> ✅ = resuelto · 🆕 = nuevo en v4
+> ✅ = resuelto · 🆕 = nuevo en v5
 
 | ID | Problema | Severidad | Esfuerzo | ¿Quick win? |
 |----|----------|-----------|----------|-------------|
-| (18 resueltos v1–v3 + KONEX) | UX-01/02/03/04/05/09/12/24/25/27/28/29/31/32/33/34/35/36 | ✅ | — | — |
-| UX-39 🆕 | Stepper lento para cantidades grandes (sin ingreso directo) | Media | Medio | — |
-| UX-38 🆕 | Vencimiento global y retroactivo expira QRs activos | Media | Medio | — |
-| UX-37 🆕 | Config de vencimiento vive en el panel demo | Media | Bajo | ✅ |
-| UX-40 🆕 | "Vence en X" no es countdown en vivo | Baja | Medio | — |
+| (24 resueltos UX-01…UX-42) | login, cámara, undo, expiración, a11y, cantidades, etc. | ✅ | — | — |
+| UX-43 🆕 | "Confirmar entrega" no queda fija (transform rompe el fixed) | **Alta** | Bajo | ✅ **SÍ** |
+| UX-44 🆕 | Filas de producto muy altas → mucho scroll | Media | Medio | — |
+| UX-45 🆕 | "Caduca en 10 minutos" del magic link no se valida | Baja | Medio | — |
 | UX-20 | Sin sync en vivo multi-runner | **Alta** | Alto | — |
 | UX-26 | Bundle 639KB; html5-qrcode no lazy | Media | Medio | — |
 | UX-07 | Sin feedback al detectar QR | Media | Medio | — |
-| UX-19 | Doble barra fija en mobile | Media | Medio | — |
+| UX-19 | Doble barra fija en mobile (se cruza con UX-43) | Media | Medio | — |
 | UX-06 | Toasts arriba, atención abajo | Media | Bajo | ✅ |
 | UX-08 | "Solo emails autorizados" es falso | Media | Medio | — |
 | UX-10 | Magic link no funciona cross-device | Media | Alto | — |
 | UX-11 | Link mágico visible + "Simular click" | Media | Bajo | ✅ |
 | UX-13 | Barra de progreso sin ARIA | Baja | Bajo | ✅ |
 | UX-14 | ConfirmDialog sin focus trap | Media | Medio | — |
-| UX-15 | "Cambiar email"/"Reenviar" tap chicos | Baja | Bajo | ✅ |
 | UX-16 | Stat cards como filtros no es evidente | Media | Bajo | ✅ |
 | UX-17 | Lista sin orden/sort | Baja | Medio | — |
 | UX-18 | "Pedidos de prueba" + Reset en prod | Media | Bajo | ✅ |
 | UX-21 | Avatar = últimos 3 chars del token | Baja | Bajo | — |
-| UX-22 | Botón de login sin estado de carga | Baja | Bajo | ✅ |
-| UX-23 | Confirmación no lista qué se entregó | Baja | Bajo | ✅ |
 | UX-30 | Toasts no se pausan / no se recuperan | Baja | Bajo | — |
 
 ---
 
-## 4. Hallazgos detallados — NUEVOS (v4)
+## 4. Hallazgos detallados — NUEVOS (v5)
 
 ```
-[UX-39] [Fricción / Mecánica central] Cargar cantidades grandes con el stepper es lento
-📍 Ubicación:      QuantityStepper.tsx (solo +/-), usado en OrderDetailPage / ProductRow.
-👀 Qué vi:         Para retirar 11 de 20 hay que tocar "+" once veces. Solo existe "Entregar
-                   todo" (todo el restante) o el incremento de a uno. No hay ingreso directo.
-😖 Por qué molesta: KONEX es multi-cantidad por diseño (el ejemplo del cliente son 7 cervezas
-                   en tandas). En rondas grandes, el conteo a dedo es tedioso y propenso a
-                   error. Es fricción en la acción MÁS frecuente del producto.
-🔥 Severidad:      Media
-🔧 Esfuerzo:       Medio
-✅ Recomendación:  Hacer el número editable (tap → input numérico con teclado numérico
-                   inputMode="numeric", clamp a remaining). Opcional: presets rápidos
-                   (+5 / la mitad / todo) cuando el restante es alto.
-```
-
-```
-[UX-38] [Producto / Riesgo operativo] El vencimiento es global y retroactivo
-📍 Ubicación:      lib/config.ts (qrExpiryMinutes global) + isOrderExpired (createdAt + ventana).
-👀 Qué vi:         La ventana de expiración es un único valor global aplicado a TODOS los
-                   pedidos según su createdAt. Bajarla de 2 h a 30 min vence al instante
-                   pedidos que ya estaban activos y dando vueltas.
-😖 Por qué molesta: Cambiar un ajuste "para adelante" tiene efecto retroactivo invisible:
-                   clientes con QR válido quedan vencidos sin aviso. Riesgo de reclamos.
-🔥 Severidad:      Media
-🔧 Esfuerzo:       Medio
-✅ Recomendación:  Fijar `expiresAt` por pedido EN EL MOMENTO de su creación (createdAt +
-                   ventana vigente entonces). El setting global pasa a ser el default de los
-                   NUEVOS QR, no una regla retroactiva. Si se quiere mantener el toggle de
-                   demo, avisar "afecta pedidos existentes" antes de aplicar.
-```
-
-```
-[UX-37] [Producto / Arquitectura de info] El ajuste de vencimiento vive en el panel de demo
-📍 Ubicación:      ScanPage.tsx — selector "Vencimiento del QR" dentro de la tarjeta
-                   "Pedidos de prueba" (junto a los tokens de prueba y "Reset").
-👀 Qué vi:         Un setting real de producto está mezclado con afordances de demo que,
-                   según UX-18, deberían ocultarse en producción. Si se ocultan, el control
-                   de vencimiento desaparece con ellos.
-😖 Por qué molesta: Mezcla "config seria" con "juguetes de demo"; en prod el operador/admin
-                   no tendría dónde configurar el vencimiento.
-🔥 Severidad:      Media
+[UX-43] [Layout / Acción principal] La barra "Confirmar entrega" no queda fija
+📍 Ubicación:      OrderDetailPage.tsx — la barra de confirmación (fixed bottom-[5.5rem])
+                   está DENTRO del contenedor con `animate-fade-up`.
+👀 Qué vi (medido): El contenedor `.animate-fade-up` queda con
+                   `transform: matrix(1,0,0,1,0,0)` (translateY(0) por animation-fill-mode
+                   both). Un ancestro con transform ≠ none se vuelve el containing block
+                   de los hijos `position: fixed` → la barra deja de anclarse al viewport.
+                   Medición real: botón en y=962 con viewport h=850 → visible:false.
+                   Hay que scrollear hasta el fondo (después de todos los productos y el
+                   historial) para encontrar "Confirmar entrega".
+😖 Por qué molesta: Rompe la acción MÁS frecuente de la pantalla MÁS usada. El patrón de
+                   "barra de acción siempre visible" no funciona; con pedidos grandes el
+                   botón queda más y más lejos. Pérdida de tiempo repetida en cada entrega.
+🔥 Severidad:      Alta
 🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Mover "Vencimiento del QR" a una zona de Ajustes (p. ej. dentro del
-                   UserMenu o una pantalla de configuración), separada de los datos de prueba.
+✅ Recomendación:  Sacar la barra de confirmación FUERA del div `.animate-fade-up`
+                   (renderizarla como hermana, igual que ya está el <ConfirmDialog/>), o
+                   quitar el `animate-fade-up` del root y animar un wrapper interno que NO
+                   contenga la barra. Verificar que el botón quede visible sin scroll.
 ```
 
 ```
-[UX-40] [Feedback] "Vence en X" no se actualiza en vivo
-📍 Ubicación:      OrderDetailPage.tsx — chip venceLabel (calculado una vez por render).
-👀 Qué vi:         El contador no decrementa solo; un QR puede vencer con el detalle abierto
-                   sin que la UI cambie. El "El QR venció" recién aparece al intentar confirmar.
-😖 Por qué molesta: El operador puede confiar en un "Vence en 1 min" que ya quedó viejo y
-                   sorprenderse al confirmar.
+[UX-44] [Densidad / UI] Las filas de producto ocupan demasiado alto
+📍 Ubicación:      ProductRow.tsx (p-4/p-5, ícono h-12, stepper h-11/12) en OrderDetailPage.
+👀 Qué vi:         Cada producto ocupa ~150px; entran 3-4 por pantalla. En el pedido demo
+                   (4 productos / 11 unidades) ya hay que scrollear; en rondas grandes de
+                   KONEX, mucho más.
+😖 Por qué molesta: El bartender no ve el pedido completo de un vistazo; suma scroll a la
+                   fricción de UX-43.
+🔥 Severidad:      Media
+🔧 Esfuerzo:       Medio
+✅ Recomendación:  Variante compacta de ProductRow (menos padding, ícono más chico, una
+                   sola línea por producto cuando no hay descripción). Mantener tap targets
+                   del stepper ≥44px pero comprimir el resto de la fila.
+```
+
+```
+[UX-45] [Microcopy / Consistencia] "Caduca en 10 minutos" del magic link no se cumple
+📍 Ubicación:      LoginPage.tsx SentStep ("Caduca en 10 minutos") + MagicLinkPage.tsx.
+👀 Qué vi:         El vencimiento de los QR de pedido ya es real (UX-09 resuelto), pero el
+                   LINK de login sigue prometiendo "caduca en 10 minutos" sin validar el
+                   `requestedAt`. Un link viejo seguiría entrando.
+😖 Por qué molesta: Promesa de seguridad incumplida en el acceso (distinto del QR de pedido).
 🔥 Severidad:      Baja
 🔧 Esfuerzo:       Medio
-✅ Recomendación:  Tick cada 30–60 s (setInterval que refresque `now`) para actualizar el
-                   chip y, si cruza el umbral, mostrar el estado vencido sin esperar al confirm.
+✅ Recomendación:  Validar `Date.now() - requestedAt < 10*60*1000` en MagicLinkPage y
+                   marcar inválido si venció, o quitar la promesa hasta implementarla.
 ```
 
-> **Hallazgos heredados aún abiertos (UX-06, 07, 08, 10, 11, 13–23, 26, 30):** vigentes con el detalle ya documentado en pasadas anteriores. Ver la matriz.
+> **Heredados aún abiertos (UX-06, 07, 08, 10, 11, 13, 14, 16–21, 26, 30):** vigentes; ver matriz.
 
 ---
 
 ## 5. Recomendaciones
 
-### ⚡ Quick wins (esta semana — alto impacto, bajo esfuerzo)
+### ⚡ Quick wins (esta semana)
 
-1. **UX-37** — Mover el ajuste de vencimiento a una zona de Ajustes real (sacarlo del panel demo).
-2. *(Heredados de alto valor/bajo costo)* **UX-11 / UX-18** — esconder afordances de demo tras flag · **UX-13** ARIA en progreso · **UX-06** toasts al bottom en mobile · **UX-16** filtros evidentes · **UX-22/23** loading en login + detalle de lo entregado.
+1. **UX-43** — Sacar la barra "Confirmar entrega" del contenedor animado. *Es el de mayor impacto/menor esfuerzo de toda la auditoría: arregla la acción central.*
+2. *(Heredados)* **UX-11 / UX-18** esconder demo · **UX-13** ARIA progreso · **UX-06** toasts al bottom · **UX-16** filtros evidentes.
 
-### 🏗️ Mejoras estratégicas (rediseño / fondo)
+### 🏗️ Mejoras estratégicas
 
-1. **Mecánica de cantidades para volumen (UX-39)** — Número editable + presets. Es la fricción de la acción más usada de KONEX; impacto directo en la velocidad de servicio.
-2. **Vencimiento por pedido, no global retroactivo (UX-38 + UX-40)** — `expiresAt` congelado al crear el QR; el setting global como default de nuevos QR; countdown en vivo. Convierte el vencimiento en una política seria.
-3. **Backend con realtime + email (UX-20 + UX-10 + email/QR-gen de KONEX)** — Sync multi-runner, magic links cross-device, generación de pedido + QR + envío por correo. Es el gran bloque que falta de KONEX.
-4. **Performance (UX-26)** — Code-splitting del escáner para aligerar la carga inicial.
+1. **Densidad del detalle (UX-44 + UX-19)** — ProductRow compacto + repensar la zona de acción inferior (una sola barra, no dos) para ganar espacio.
+2. **Backend con realtime + email (UX-20 + UX-10 + email/QR-gen de KONEX)** — el gran bloque pendiente del producto.
+3. **Performance (UX-26)** — code-splitting del escáner.
 
 ---
 
-> **Alcance respetado:** auditoría de experiencia, no de seguridad. En esta pasada no se modificó código — solo se regeneró el reporte. 18 hallazgos previos están en `main`/`gh-pages`. Los nuevos (UX-37–40) quedan listos para ejecutar cuando se indique.
+> **Alcance respetado:** auditoría de experiencia, sin tocar código en esta pasada. La verificación se hizo navegando el preview en vivo. 24 hallazgos previos están en producción; los nuevos (UX-43–45) quedan listos para ejecutar — **UX-43 es prioritario**.

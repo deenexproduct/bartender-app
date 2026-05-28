@@ -228,7 +228,11 @@ export function OrderDetailPage() {
 
   return (
     <>
-      <div className="animate-fade-up mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
+        {/* UX-43: la animación va en este wrapper interno. La barra "Confirmar entrega"
+            queda FUERA: un ancestro con transform (lo deja animate-fade-up) rompe el
+            position:fixed y la barra dejaba de anclarse al viewport. */}
+        <div className="animate-fade-up flex flex-col gap-5">
         <button
           onClick={goBack}
           className="inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-1 text-sm font-semibold text-neutral-500 transition-colors duration-150 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-accent-400"
@@ -359,6 +363,8 @@ export function OrderDetailPage() {
         </div>
 
         <RetrievalHistory events={order!.history} />
+        </div>
+        {/* /UX-43 wrapper animado */}
 
         {!isCompleted && (
           <>
