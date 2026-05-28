@@ -38,6 +38,15 @@ export function MagicLinkPage() {
       return
     }
 
+    // UX-45: hacer cumplir el "caduca en 10 minutos" que promete el login.
+    const LINK_TTL_MS = 10 * 60 * 1000
+    if (Date.now() - Date.parse(pending.requestedAt) > LINK_TTL_MS) {
+      clearPendingMagicLink()
+      setState('invalid')
+      toast.error('Link vencido', 'El link caducó (vale 10 minutos). Pedí uno nuevo desde el login.')
+      return
+    }
+
     signIn(email)
     clearPendingMagicLink()
     setState('ok')

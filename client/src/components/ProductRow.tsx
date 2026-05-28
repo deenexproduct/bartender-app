@@ -43,27 +43,27 @@ export function ProductRow({ product, selected, onChange }: Props) {
   return (
     <div
       className={cn(
-        'flex flex-col gap-4 rounded-3xl bg-white p-4 transition-all duration-300 ease-out sm:flex-row sm:items-center sm:justify-between sm:p-5',
+        'flex items-center justify-between gap-3 rounded-2xl bg-white p-3 transition-all duration-300 ease-out sm:gap-4 sm:rounded-3xl sm:p-4',
         isFull && 'opacity-80',
         !isFull && hasSelection && cn('shadow-card-hover ring-2', cfg.ringSelected),
         !isFull && !hasSelection && 'shadow-card hover:-translate-y-0.5 hover:shadow-card-hover',
       )}
     >
-      <div className="flex min-w-0 items-center gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <div
           className={cn(
-            'grid h-12 w-12 shrink-0 place-items-center rounded-2xl transition-all duration-300',
+            'grid h-11 w-11 shrink-0 place-items-center rounded-2xl transition-all duration-300',
             isFull ? 'bg-status-success-bg text-status-success' : cn(cfg.iconBg, cfg.iconText),
           )}
         >
-          {isFull ? <Check size={22} strokeWidth={2.5} /> : <Icon size={22} />}
+          {isFull ? <Check size={20} strokeWidth={2.5} /> : <Icon size={20} />}
         </div>
         <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
-            <h3 className="truncate text-base font-bold text-neutral-900 sm:text-lg">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h3 className="line-clamp-2 min-w-0 text-base font-bold leading-tight text-neutral-900 sm:text-lg">
               {product.name}
             </h3>
-            <span className="text-xs font-semibold text-neutral-500">×{product.total}</span>
+            <span className="shrink-0 text-xs font-semibold text-neutral-500">×{product.total}</span>
           </div>
           {product.description && (
             <p className="truncate text-sm text-neutral-500">{product.description}</p>
@@ -75,7 +75,7 @@ export function ProductRow({ product, selected, onChange }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex shrink-0 items-center justify-end">
         {isFull ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-status-success-bg px-3 py-1.5 text-xs font-bold text-status-success-fg">
             <Check size={14} strokeWidth={3} /> Entregado

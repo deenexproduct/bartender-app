@@ -12,7 +12,12 @@
 
 Las 4 pasadas anteriores fueron análisis estático + simulación. **Esta fue navegación real**, y por eso destapó un bug de layout de **severidad alta que ninguna lectura de código podía ver**: la barra "Confirmar entrega" **no está realmente fija** (UX-43). Lección: para layout/posicionamiento, hay que renderizar.
 
-**Estado acumulado: 24 hallazgos resueltos** en producción (UX-01 a UX-42, salvo los de backend). Esta pasada agrega **3 nuevos** (UX-43 a UX-45). **UX-43 (la barra rota) ya se corrigió en esta misma sesión** — sacando la barra del contenedor animado para que su `position: fixed` se ancle al viewport. Verificado en vivo: el botón pasó de `y=962` (fuera) a `y=694` (visible sin scroll). Quedan UX-44 y UX-45.
+**Estado acumulado: 24 hallazgos resueltos** en producción (UX-01 a UX-42, salvo los de backend). Esta pasada agregó **3 nuevos** (UX-43 a UX-45) y **los 3 ya se corrigieron y verificaron en vivo en esta sesión**:
+- **UX-43** — barra "Confirmar entrega" sacada del contenedor animado → `position: fixed` se ancla al viewport. Botón pasó de `y=962` (fuera) a `y=694` (visible sin scroll).
+- **UX-44** — ProductRow compacto (una sola línea, menos padding, ícono más chico, nombre con line-clamp-2). Más productos por pantalla en mobile.
+- **UX-45** — el "caduca en 10 minutos" del magic link ahora se valida (link de 11 min → rechazado con "Link vencido").
+
+**Total resuelto: 27 de 45 hallazgos.** Lo que queda es backend (UX-20 sync, email/generación de QR, UX-10 cross-device) y pulidos menores.
 
 ---
 
