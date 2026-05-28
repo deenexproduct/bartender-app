@@ -68,7 +68,7 @@ export function RetrievalHistory({ events }: Props) {
                   ))}
                 </ul>
 
-                <p className="mt-2 text-[11px] font-medium text-neutral-400">
+                <p className="mt-2 text-[11px] font-medium text-neutral-500">
                   Entregó <span className="tabular-nums font-bold text-neutral-700">{totalItems}</span>{' '}
                   producto{totalItems === 1 ? '' : 's'}
                 </p>

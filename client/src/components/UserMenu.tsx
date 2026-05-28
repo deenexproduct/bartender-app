@@ -99,7 +99,7 @@ export function UserMenu({ variant }: Props) {
 
           {/* Info */}
           <div className="px-4 py-3 text-[11px]">
-            <p className="text-neutral-400">
+            <p className="text-neutral-500">
               <span className="font-bold text-neutral-700">Sesión iniciada</span>{' '}
               {new Date(operator.loggedAt).toLocaleString('es-AR', {
                 hour: '2-digit',

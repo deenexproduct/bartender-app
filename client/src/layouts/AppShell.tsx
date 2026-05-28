@@ -23,7 +23,7 @@ export function AppShell() {
           </div>
           <div>
             <p className="text-base font-bold text-neutral-900">Bartender</p>
-            <p className="text-xs font-medium text-neutral-400">por Deenex</p>
+            <p className="text-xs font-medium text-neutral-500">por Deenex</p>
           </div>
         </div>
         <nav className="flex flex-col gap-1 px-3">
@@ -75,7 +75,7 @@ export function AppShell() {
           </div>
           <div>
             <p className="text-sm font-bold leading-tight text-neutral-900">Bartender</p>
-            <p className="text-[11px] font-medium leading-tight text-neutral-400">por Deenex</p>
+            <p className="text-[11px] font-medium leading-tight text-neutral-500">por Deenex</p>
           </div>
         </div>
         {operator && <UserMenu variant="header" />}

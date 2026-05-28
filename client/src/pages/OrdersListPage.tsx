@@ -143,7 +143,7 @@ export function OrdersListPage() {
                     <p className="truncate font-bold text-neutral-900">{o.customerName}</p>
                     <StatusBadge status={o.status} />
                   </div>
-                  <p className="mt-0.5 font-mono text-xs font-semibold tracking-widest text-neutral-400">
+                  <p className="mt-0.5 font-mono text-xs font-semibold tracking-widest text-neutral-500">
                     {o.token}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-neutral-500">

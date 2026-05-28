@@ -235,7 +235,7 @@ function ToastItem({
           type="button"
           onClick={() => onDismiss(toast.id)}
           aria-label="Cerrar"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-400 transition-colors hover:bg-primary-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-accent-400"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-primary-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <X size={16} />
         </button>

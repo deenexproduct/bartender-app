@@ -63,12 +63,12 @@ export function ProductRow({ product, selected, onChange }: Props) {
             <h3 className="truncate text-base font-bold text-neutral-900 sm:text-lg">
               {product.name}
             </h3>
-            <span className="text-xs font-semibold text-neutral-400">×{product.total}</span>
+            <span className="text-xs font-semibold text-neutral-500">×{product.total}</span>
           </div>
           {product.description && (
             <p className="truncate text-sm text-neutral-500">{product.description}</p>
           )}
-          <p className="mt-1 text-xs font-medium text-neutral-400">
+          <p className="mt-1 text-xs font-medium text-neutral-500">
             Entregados <span className="text-neutral-700">{product.retrieved}</span> · Faltan{' '}
             <span className={cn(isFull ? 'text-status-success' : cfg.iconText)}>{remaining}</span>
           </p>
@@ -81,7 +81,7 @@ export function ProductRow({ product, selected, onChange }: Props) {
             <Check size={14} strokeWidth={3} /> Entregado
           </span>
         ) : (
-          <QuantityStepper value={selected} max={remaining} onChange={onChange} />
+          <QuantityStepper value={selected} max={remaining} onChange={onChange} label={product.name} />
         )}
       </div>
     </div>

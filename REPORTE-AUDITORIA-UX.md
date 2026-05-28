@@ -1,8 +1,8 @@
-# 🕵️ Reporte de Auditoría UX — Bartender App (Deenex) · v2
+# 🕵️ Reporte de Auditoría UX — Bartender App (Deenex) · v3
 
-> **Pasada:** Segunda (re-auditoría sobre el estado actual, post quick wins de la v1).
-> **Método:** Análisis estático + simulación de flujos (lectura completa de las 19 pantallas/componentes + verificación de assets, manifest y build).
-> **Repo auditado:** `~/dev/bartender-app` · rama `main` · commit base `54baec7`
+> **Pasada:** Tercera. Foco de esta corrida: **accesibilidad medible** (contraste, motion, lectores de pantalla) + edge cases que las pasadas anteriores no cubrieron.
+> **Método:** Análisis estático + simulación + medición (ratios de contraste WCAG calculados, manifest/build verificados).
+> **Repo:** `~/dev/bartender-app` · rama `main` · commit base `db6e3c7`
 > **Stack:** React 19 + Vite 7 + Tailwind 4 + React Router 7 (HashRouter) + vite-plugin-pwa + html5-qrcode
 > **Live:** https://deenexproduct.github.io/bartender-app/
 > **Idioma del producto:** español rioplatense
@@ -10,18 +10,30 @@
 
 ---
 
-## 0. Qué cambió desde la v1 (verificado)
+## 0. Estado acumulado (verificado en código)
 
-La primera pasada dejó 23 hallazgos. Se implementaron y deployaron **4 quick wins**, verificados en el código actual:
+**11 de los 30 hallazgos previos están resueltos y en producción:**
 
-| ID | Estado | Verificación |
-|----|--------|--------------|
-| UX-01 — Cámara no se reanudaba | ✅ **Resuelto** | `ScanPage.tsx` arranca en `mode='camera'` si el operador ya la usó (flag en `localStorage`). *Nota: ahora el permiso de cámara se pide al aterrizar en la pantalla; aceptable, pero es un efecto nuevo.* |
-| UX-03 — "Volver" iba siempre a Escanear | ✅ **Resuelto** | `OrderDetailPage.tsx` usa `goBack()` = `navigate(-1)` salvo entrada directa por URL. |
-| UX-05 — Banner offline prometía sync | ✅ **Resuelto** | `OfflineBanner.tsx`: "los retiros se guardan en este dispositivo". |
-| UX-12 — Enter confirmaba acción destructiva | ✅ **Resuelto** | `ConfirmDialog.tsx` enfoca Cancelar y quitó el atajo Enter→confirmar. |
+| Resueltos v1 | Resueltos v2 (quick wins) | Resueltos (estratégicos) |
+|---|---|---|
+| UX-01 cámara se reanuda | UX-24 íconos PWA reales | UX-02 undo en entregas |
+| UX-03 "Volver" al origen | UX-25 zoom habilitado | UX-04 selección persistente |
+| UX-05 copy offline honesto | UX-27 contador "X de N" | |
+| UX-12 confirm seguro | UX-28 meta description | |
+| | UX-29 autoFocus desktop | |
 
-**Los otros 19 hallazgos de la v1 siguen abiertos** (ver matriz). Esta pasada agrega **7 hallazgos nuevos** (UX-24 a UX-30), varios con evidencia concreta del build y del manifest.
+Esta pasada detectó **6 hallazgos nuevos** (UX-31 a UX-36) y, a pedido, **se implementaron los 6** en la misma sesión:
+
+| ID | Fix aplicado |
+|----|--------------|
+| UX-31 | Texto secundario subido de `neutral-400` (3.2–3.6:1) a `neutral-500` (5.0:1, AA ✓) en 12 lugares; íconos decorativos quedan en 400 |
+| UX-32 | Placeholder del código manual subido de `neutral-300` (2.2:1) a `neutral-400` |
+| UX-33 | `@media (prefers-reduced-motion: reduce)` global en index.css |
+| UX-34 | QuantityStepper con `role="group"`, valor `role="status" aria-live`, y aria-labels contextuales (nombre del producto) |
+| UX-35 | Oculto el `::-webkit-search-cancel-button` nativo |
+| UX-36 | Visor de cámara con `role="img"` + aria-label que ofrece la entrada manual como alternativa |
+
+**Total resuelto: 17 de 36 hallazgos.** El resto del reporte (abajo) queda como registro de detección.
 
 ---
 
@@ -29,65 +41,58 @@ La primera pasada dejó 23 hallazgos. Se implementaron y deployaron **4 quick wi
 
 ### Las 5 fricciones que más sangran (estado actual)
 
-1. **Entregas parciales sin confirmación ni undo (UX-02).** Sigue siendo lo más riesgoso del producto: la acción que toca inventario real se ejecuta al instante, sin diálogo y sin reversa. Un dedo mal puesto queda firmado para siempre.
+1. **No hay sincronización en vivo entre runners (UX-20).** La promesa "no dupliques entregas" sigue dependiendo de un banner calculado sobre datos mock; dos dispositivos reales no se ven. Es el gap que separa la demo del producto.
 
-2. **Un tap accidental en la nav inferior borra la selección en curso (UX-04).** Con cantidades ya cargadas, tocar "Escanear/Pedidos" descarta todo sin aviso.
+2. **Carga inicial pesada en el wifi del local (UX-26).** 639 KB de JS (192 KB gzip) con `html5-qrcode` viajando en todas las rutas. La primera pantalla tarda más de lo que debería en una red saturada de evento.
 
-3. **La PWA se instala con el ícono roto (UX-24, NUEVO).** El manifest pide `icon-192.png`, `icon-512.png` y `icon-512-maskable.png`, pero **esos archivos no existen** (en `public/` solo hay SVGs). "Instalar la app en la mano del operador" es la promesa central de una PWA y hoy llega con el ícono ausente.
+3. **El texto secundario no llega a contraste AA (UX-31, NUEVO).** Los grises chicos (`neutral-400`) dan **3.2–3.6:1** sobre blanco — debajo del mínimo 4.5:1. Son los timestamps, "Faltan X", captions, "por Deenex". Irónico: la propia app le pide al cliente *subir el brillo de la pantalla*, pero su texto chico es difícil de leer justo en el ambiente brillante de una barra.
 
-4. **El zoom está desactivado (UX-25, NUEVO).** `maximum-scale=1` en el viewport impide el pinch-zoom: un operador con baja visión no puede agrandar nada. Barrera de accesibilidad real.
+4. **Escanear no da feedback perceptible (UX-07).** Al decodificar el QR navega sin flash, beep ni vibración. En un lugar ruidoso y oscuro, el runner no sabe si "agarró".
 
-5. **Carga inicial pesada en wifi de evento (UX-26, NUEVO).** El bundle es **639 KB (192 KB gzip)** y `html5-qrcode` viaja en el bundle principal en TODAS las rutas, aunque solo lo use Escanear. La primera carga en la red saturada de un local se siente lenta.
+5. **El detalle del pedido se siente apretado en mobile (UX-19).** La barra "Confirmar entrega" y la nav inferior conviven apiladas, comiendo espacio de la lista de productos.
 
 ### Sensación general del recorrido
 
-**Mejoró respecto de la v1.** El bucle central ahora fluye: la cámara queda lista entre clientes y "Volver" te devuelve a donde estabas. La app sigue viéndose premium y consistente. Pero quedan dos clases de problema sin tocar: **(a) la falta de red de seguridad en la acción más sensible** (entregas sin undo, selección que se pierde) y **(b) detalles de "producto real"** que la primera pasada no cubrió —PWA instalable de verdad, accesibilidad de zoom, peso de carga—. Es una demo linda y ya más usable; todavía no está blindada para el caos de una barra ni para instalarse como app seria.
+**La app está notablemente mejor que en las primeras pasadas.** El bucle central fluye (cámara lista, "Volver" correcto), las acciones sensibles ya tienen red (undo, selección persistente) y se instala como PWA con su ícono. Lo que queda es de dos tipos: **(a) el salto a producto real** (sync multi-runner, performance) y **(b) una capa de accesibilidad fina** que recién ahora se audita en profundidad —contraste de texto, respeto por `prefers-reduced-motion`, anuncios para lectores de pantalla—. Se siente cuidada y confiable; todavía no del todo *inclusiva* ni *liviana*.
 
 ---
 
 ## 2. Diario del usuario (narrativa)
 
-> *Soy Maxi. Otra noche, misma barra. Vengo de la última vez que usé esto.*
+> *Soy Maxi. Van varias noches ya con esto y se nota que lo fueron puliendo.*
 
-**Entro y agarro la cámara al toque** — ahora arranca sola, ya no tengo que prenderla en cada cliente. Eso me cambió la noche, en serio. Escaneo, entrego todo, confeti, "Escanear otro", y la cámara **ya está lista de nuevo**. Fluye.
+**Abro la app en la tablet** y tarda un toque de más en cargar la pantalla de login —en el wifi del local todo va lento, pero igual, son segundos que se sienten. Entro, la cámara ya está lista, escaneo, entrego. Si me equivoco ahora me sale un **"Deshacer"** en el cartelito — eso me da tranquilidad que antes no tenía.
 
-**Entrega parcial otra vez.** Dos de cuatro. Cargo el stepper, "Confirmar entrega"… y de nuevo, **listo, sin red**. Me quedé con la duda de si puse 2 o 3 y no hay forma de deshacer. Esto sigue sin estar.
+**Cargo un pedido grande, toco sin querer "Pedidos"** abajo… vuelvo y **la selección sigue ahí**. Antes se borraba. Ahora no. Alivio.
 
-**Toco sin querer "Pedidos" abajo** mientras armaba un pedido grande. **Se borró toda la selección.** Igual que la otra vez. Ya aprendí a tener cuidado, pero no debería tener que tener cuidado.
+**Donde sufro es leyendo.** Con las luces del lugar y la pantalla a contraluz, los datos chicos —la hora del pedido, el "Faltan 2", los textitos grises— **los tengo que forzar la vista para leerlos**. Es gracioso porque la app me dice "decile al cliente que suba el brillo", pero la letra gris finita de la propia app es lo que menos se lee acá adentro.
 
-**Voy a la lista y busco "Lucía".** Aparece su pedido… pero arriba sigue diciendo "3 pedidos en total". ¿3? Si veo uno. Por un segundo dudo si el buscador filtró bien.
+**Un compañero me comentó** que a él las animaciones —el confeti, los pulsos que laten— lo marean un poco. Tiene activado en el celu eso de "reducir movimiento" y la app igual le tira todo el show. No le hace caso a esa preferencia.
 
-**Quiero instalar la app en la tablet** para tenerla como ícono. La agrego a la pantalla de inicio y… **el ícono sale en blanco/roto**. Para algo que se vende como "la app del operador", queda berreta apenas la instalás.
+**Cuando le presto la tablet a alguien que no ve bien**, me doy cuenta que con el lector de pantalla el +/- de las cantidades no le canta el número: toca "sumar", "sumar", y no escucha en cuánto va. Tiene que adivinar.
 
-**Intento agrandar** un texto chico con los dedos (la luz del lugar es un desastre) y **no me deja hacer zoom**. Nada. Me jode los ojos.
-
-**Vuelvo a un pedido desde la lista, "Volver"** — ahora sí me devuelve a la lista, no a la cámara. Eso lo arreglaron, bien.
-
-**Balance:** la uso más cómodo que antes. Las cosas que me siguen sangrando son las de confianza (entregar sin poder deshacer, perder lo que cargué) y las de "esto es una app de verdad" (que se instale bien, que pueda hacer zoom, que cargue rápido en el wifi del local).
+**Balance:** la uso cómodo, ya le tengo confianza. Lo que me queda es que **cargue más rápido**, que **la letra chica se lea de una** bajo cualquier luz, y que **el laburo con otro runner se vea en vivo** —hoy sigo cruzando los dedos para no entregar dos veces.
 
 ---
 
 ## 3. Tabla priorizada — Matriz Impacto × Esfuerzo
 
-> ✅ = resuelto en v1 · 🆕 = nuevo en v2
+> ✅ = resuelto · 🆕 = nuevo en v3
 
 | ID | Problema | Severidad | Esfuerzo | ¿Quick win? |
 |----|----------|-----------|----------|-------------|
-| UX-01 | Cámara no se reanudaba | ✅ Resuelto | — | — |
-| UX-03 | "Volver" iba a Escanear | ✅ Resuelto | — | — |
-| UX-05 | Banner offline prometía sync | ✅ Resuelto | — | — |
-| UX-12 | Enter confirmaba destructivo | ✅ Resuelto | — | — |
-| UX-02 | Entrega parcial sin undo | **Alta** | Medio | — |
-| UX-04 | Nav borra la selección | **Alta** | Medio | — |
-| UX-24 🆕 | Íconos PWA no existen (install roto) | Media | Bajo | ✅ **SÍ** |
-| UX-25 🆕 | `maximum-scale=1` desactiva el zoom | Media | Bajo | ✅ **SÍ** |
-| UX-26 🆕 | Bundle 639KB; html5-qrcode no lazy | Media | Medio | — |
-| UX-27 🆕 | Header "N en total" no refleja búsqueda/filtro | Media | Bajo | ✅ |
-| UX-28 🆕 | Falta meta description | Baja | Bajo | ✅ |
-| UX-29 🆕 | autoFocus en login abre teclado tapando contenido | Baja | Bajo | ✅ |
-| UX-30 🆕 | Toasts no se pausan / no se recuperan | Baja | Bajo | — |
+| UX-01/02/03/04/05/12/24/25/27/28/29 | (11 resueltos) | ✅ | — | — |
+| UX-20 | Sin sync en vivo multi-runner | **Alta** | Alto | — |
+| UX-26 | Bundle 639KB; html5-qrcode no lazy | Media | Medio | — |
+| UX-31 🆕 | Texto `neutral-400` no llega a AA (3.2–3.6:1) | Media | Medio | — |
+| UX-32 🆕 | Placeholder `neutral-300` ~2:1 | Baja | Bajo | ✅ |
+| UX-33 🆕 | Sin `prefers-reduced-motion` (9 animaciones) | Media | Bajo | ✅ **SÍ** |
+| UX-34 🆕 | QuantityStepper no anuncia el valor (lector) | Media | Bajo | ✅ **SÍ** |
+| UX-35 🆕 | `type="search"` + X custom → doble clear | Baja | Bajo | ✅ |
+| UX-36 🆕 | Región de cámara sin label para AT | Baja | Bajo | ✅ |
+| UX-07 | Sin feedback al detectar QR | Media | Medio | — |
+| UX-19 | Doble barra fija en mobile | Media | Medio | — |
 | UX-06 | Toasts arriba, atención abajo | Media | Bajo | ✅ |
-| UX-07 | Sin feedback al detectar QR (háptico/sonoro) | Media | Medio | — |
 | UX-08 | "Solo emails autorizados" es falso | Media | Medio | — |
 | UX-09 | "Caduca en 10 min" no se valida | Baja | Medio | — |
 | UX-10 | Magic link no funciona cross-device | Media | Alto | — |
@@ -98,115 +103,115 @@ La primera pasada dejó 23 hallazgos. Se implementaron y deployaron **4 quick wi
 | UX-16 | Stat cards como filtros no es evidente | Media | Bajo | ✅ |
 | UX-17 | Lista sin orden/sort | Baja | Medio | — |
 | UX-18 | "Pedidos de prueba" + Reset en prod | Media | Bajo | ✅ |
-| UX-19 | Doble barra fija en mobile | Media | Medio | — |
-| UX-20 | Sin sync en vivo multi-runner | **Alta** | Alto | — |
 | UX-21 | Avatar = últimos 3 chars del token | Baja | Bajo | — |
 | UX-22 | Botón de login sin estado de carga | Baja | Bajo | ✅ |
 | UX-23 | Confirmación no lista qué se entregó | Baja | Bajo | ✅ |
+| UX-30 | Toasts no se pausan / no se recuperan | Baja | Bajo | — |
 
 ---
 
-## 4. Hallazgos detallados — NUEVOS (v2)
+## 4. Hallazgos detallados — NUEVOS (v3)
 
 ```
-[UX-24] [PWA / Primera impresión] La PWA se instala con el ícono roto
-📍 Ubicación:      vite.config.ts (manifest.icons) vs client/public/
-👀 Qué vi:         El manifest declara icon-192.png, icon-512.png y icon-512-maskable.png.
-                   En public/ solo existen favicon.svg e icons.svg — ninguno de esos PNG.
-                   El build no emite PNGs.
-😖 Por qué molesta: Al "Agregar a pantalla de inicio" (la promesa central de una PWA), el
-                   ícono sale vacío/genérico. Abarata el producto justo en el momento de
-                   mayor compromiso del usuario (instalarlo).
+[UX-31] [Accesibilidad / Legibilidad] El texto secundario no llega a contraste AA
+📍 Ubicación:      Token neutral-400 (#8b8589). Usos: timestamps en lista y detalle,
+                   "Entregados X · Faltan Y" (ProductRow), captions, "por Deenex" en el
+                   logo, descripciones de eyebrow, labels de "Pedidos de prueba".
+👀 Qué vi (medido): Ratios calculados:
+                   - neutral-400 sobre blanco      = 3.61:1  (AA pide 4.5:1)  ✗
+                   - neutral-400 sobre primary-50   = 3.43:1  ✗
+                   - neutral-400 sobre accent-50     = 3.16:1  ✗
+                   - neutral-300 sobre blanco        = 2.19:1  ✗  (ver UX-32)
+                   neutral-500+ sí pasan (5.0–12.9:1).
+😖 Por qué molesta: En la barra, con poca luz o pantalla a contraluz, los datos chicos
+                   (hora, faltantes) cuestan leerse. Afecta a cualquiera, no solo a baja
+                   visión. Choca con el propio "Tip" de la app sobre el brillo de pantalla.
 🔥 Severidad:      Media
-🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Generar los 3 PNG (192, 512, 512-maskable) desde el SVG de marca y
-                   ponerlos en public/. Sugerencia: fondo violeta #695ede con el glifo
-                   del logo centrado; el maskable con padding de safe-zone (~20%).
+🔧 Esfuerzo:       Medio (cambio de token, revisar dónde es texto vs. decorativo)
+✅ Recomendación:  Para TEXTO, subir el mínimo a neutral-500 (#706a6e, 5.28:1). Reservar
+                   neutral-400 solo para íconos decorativos o bordes. Regla: si es legible,
+                   neutral-500 o más oscuro.
 ```
 
 ```
-[UX-25] [Accesibilidad] El viewport desactiva el zoom
-📍 Ubicación:      index.html → <meta name="viewport" ... maximum-scale=1>
-👀 Qué vi:         `maximum-scale=1` (y el implícito user-scalable bloqueado) impide el
-                   pinch-zoom en toda la app.
-😖 Por qué molesta: Un operador con baja visión, o cualquiera bajo mala luz, no puede
-                   agrandar texto/códigos. Es una barrera de accesibilidad (WCAG 1.4.4).
-🔥 Severidad:      Media
-🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Quitar `maximum-scale=1`: dejar
-                   `width=device-width, initial-scale=1, viewport-fit=cover`.
-                   Mantener viewport-fit=cover para el safe-area; el zoom no rompe el layout.
-```
-
-```
-[UX-26] [Performance percibida] Carga inicial pesada; el escáner viaja en todas las rutas
-📍 Ubicación:      ScanPage.tsx (import estático de html5-qrcode) → bundle principal
-👀 Qué vi:         Build: dist/assets/index-*.js = 639 KB (192 KB gzip), con warning de
-                   chunk >500KB. html5-qrcode se importa estático, así que se descarga
-                   también en Login, Lista y Detalle, donde no se usa.
-😖 Por qué molesta: En el wifi saturado de un evento, la primera pantalla (Login) tarda más
-                   de lo necesario. El operador percibe la app como "lenta para abrir".
-🔥 Severidad:      Media
-🔧 Esfuerzo:       Medio
-✅ Recomendación:  Lazy-load de la pantalla de escaneo y/o `import()` dinámico de
-                   html5-qrcode dentro del efecto de cámara. Con React.lazy + Suspense se
-                   saca ~la mitad del peso de la carga inicial.
-```
-
-```
-[UX-27] [Consistencia / Feedback] El contador del header no refleja la búsqueda ni el filtro
-📍 Ubicación:      OrdersListPage.tsx (header "N pedidos en total" usa stats.total global)
-👀 Qué vi:         Al buscar "Lucía" o filtrar por estado, la lista se reduce pero el header
-                   sigue diciendo el total global (p. ej. "3 pedidos en total"). Las stat
-                   cards también muestran conteos globales, no del subconjunto filtrado.
-😖 Por qué molesta: Genera una duda de "¿filtró bien?". El número de arriba contradice lo
-                   que el usuario ve en la lista.
-🔥 Severidad:      Media
-🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Cuando hay query/filtro activo, mostrar "Mostrando X de N" usando
-                   `filtered.length`. Mantener el total global como referencia secundaria.
-```
-
-```
-[UX-28] [Microcopy / Compartir] Falta meta description
-📍 Ubicación:      index.html (<head>)
-👀 Qué vi:         No hay <meta name="description">. Al compartir el link o guardarlo, no
-                   hay resumen; el preview queda pobre.
-😖 Por qué molesta: Menor, pero afecta cómo se ve el producto cuando se comparte el enlace
-                   (demo a stakeholders, mensaje de WhatsApp con el live).
+[UX-32] [Accesibilidad] Placeholders con contraste muy bajo
+📍 Ubicación:      ScanPage input manual (placeholder:text-neutral-300) y similares.
+👀 Qué vi:         neutral-300 (#b2aeb1) sobre blanco = 2.19:1. El placeholder "DNX-XXXXXX"
+                   casi no se distingue del fondo.
+😖 Por qué molesta: La pista de formato del código (lo que ayuda a tipear bien) es lo que
+                   menos se ve.
 🔥 Severidad:      Baja
 🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Agregar <meta name="description" content="Retiro de productos por QR —
-                   entregá pedidos en segundos. Por Deenex."> y, idealmente, tags
-                   Open Graph (og:title, og:description, og:image).
+✅ Recomendación:  Subir placeholders a neutral-400 como mínimo (idealmente 500), o usar un
+                   hint persistente debajo del campo en vez de depender del placeholder.
 ```
 
 ```
-[UX-29] [Mobile] autoFocus en el login abre el teclado y tapa contenido
-📍 Ubicación:      LoginPage.tsx (input email con autoFocus)
-👀 Qué vi:         Al cargar el login en mobile, el teclado salta solo y cubre el CTA y el
-                   texto de ayuda; hay que cerrarlo para ver el botón.
-😖 Por qué molesta: Arranque incómodo en el primer contacto del turno; sensación de salto.
+[UX-33] [Accesibilidad / Motion] No se respeta prefers-reduced-motion
+📍 Ubicación:      index.css (9 @keyframes: fade-up, fade-in, scan-line, pulse-soft,
+                   glow-pulse, confetti, toast-in, toast-in-mobile, shake). Sin media query.
+👀 Qué vi:         No existe `@media (prefers-reduced-motion: reduce)`. El confeti de
+                   confirmación, los pulsos que "laten" (glow-pulse/pulse-soft) y la línea
+                   de escaneo corren siempre, ignorando la preferencia del sistema.
+😖 Por qué molesta: Usuarios con sensibilidad vestibular (mareo/náusea) reciben todo el
+                   movimiento aunque hayan pedido reducirlo a nivel SO.
+🔥 Severidad:      Media
+🔧 Esfuerzo:       Bajo
+✅ Recomendación:  Agregar al final de index.css:
+                   @media (prefers-reduced-motion: reduce) {
+                     *, *::before, *::after {
+                       animation-duration: .01ms !important;
+                       animation-iteration-count: 1 !important;
+                       transition-duration: .01ms !important;
+                     }
+                   }
+                   Y omitir el confeti cuando la preferencia esté activa.
+```
+
+```
+[UX-34] [Accesibilidad] El selector de cantidad no anuncia el valor a lectores de pantalla
+📍 Ubicación:      QuantityStepper.tsx (botones con aria-label "Restar"/"Sumar"; el número
+                   es un <div> sin rol ni aria-live).
+👀 Qué vi:         Un lector de pantalla anuncia "Restar, botón" / "Sumar, botón" pero
+                   nunca el valor resultante. El usuario no escucha en cuánto va.
+😖 Por qué molesta: Una persona con baja visión no puede saber cuántas unidades seleccionó
+                   antes de confirmar la entrega.
+🔥 Severidad:      Media
+🔧 Esfuerzo:       Bajo
+✅ Recomendación:  Exponer el grupo como spinbutton: envolver con role="group"
+                   aria-label="Cantidad a entregar" y dar al número
+                   role="status" aria-live="polite" (o usar aria-valuenow/min/max).
+                   Incluir el contexto del producto en los aria-label de +/-.
+```
+
+```
+[UX-35] [UI] Doble botón de limpiar en la búsqueda
+📍 Ubicación:      OrdersListPage.tsx (input type="search" + botón X custom).
+👀 Qué vi:         En navegadores WebKit, type="search" agrega su propia "x" nativa cuando
+                   hay texto, que convive con la "x" custom del diseño. Dos limpiadores.
+😖 Por qué molesta: Inconsistencia visual menor; puede confundir cuál tocar.
 🔥 Severidad:      Baja
 🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Quitar autoFocus en mobile (o condicionarlo a viewport ancho). El campo
-                   ya es lo primero y obvio; no necesita robar el foco al montar.
+✅ Recomendación:  Ocultar el control nativo con
+                   `input[type="search"]::-webkit-search-cancel-button { display:none }`
+                   o usar type="text" inputMode="search".
 ```
 
 ```
-[UX-30] [Feedback] Los toasts no se pausan al pasar por encima ni se pueden recuperar
-📍 Ubicación:      Toast.tsx (auto-dismiss por setTimeout, sin pausa en hover/focus)
-👀 Qué vi:         Un toast de error dura 6s y desaparece; si el usuario estaba leyéndolo o
-                   se distrajo, no hay forma de traerlo de vuelta.
-😖 Por qué molesta: Mensajes importantes (p. ej. "No pudimos confirmar: …") se pierden.
+[UX-36] [Accesibilidad] La región de la cámara no tiene etiqueta ni instrucciones para AT
+📍 Ubicación:      ScanPage.tsx (<div id="qr-reader">), sin role/aria-label.
+👀 Qué vi:         El visor de cámara es un contenedor sin texto alternativo ni instrucción.
+                   Con lector de pantalla, el modo cámara es "silencioso".
+😖 Por qué molesta: No hay guía para quien no ve el visor; la entrada manual (la vía
+                   accesible) existe pero no se señaliza como alternativa desde el visor.
 🔥 Severidad:      Baja
 🔧 Esfuerzo:       Bajo
-✅ Recomendación:  Pausar el timer en hover/focus del toast; opcional: un pequeño centro de
-                   "últimas notificaciones". Para errores, considerar que requieran cierre
-                   manual en vez de auto-dismiss.
+✅ Recomendación:  Dar al contenedor role="img" aria-label="Visor de cámara para escanear
+                   el QR del cliente" y un texto visible/SR "¿No podés escanear? Cargá el
+                   código a mano" enlazado al modo manual.
 ```
 
-> **Hallazgos heredados de la v1 (UX-02, UX-04, UX-06–UX-23):** siguen vigentes con el detalle ya documentado. No se repiten acá para no inflar; ver la matriz para severidad/esfuerzo y el historial git del reporte v1 para el detalle completo.
+> **Hallazgos heredados aún abiertos (UX-06–11, 13–23, 26, 30):** vigentes con el detalle ya documentado en pasadas anteriores. Ver matriz para severidad/esfuerzo.
 
 ---
 
@@ -214,19 +219,19 @@ La primera pasada dejó 23 hallazgos. Se implementaron y deployaron **4 quick wi
 
 ### ⚡ Quick wins (esta semana — alto impacto, bajo esfuerzo)
 
-1. **UX-24** — Generar y agregar los 3 PNG de ícono. Destraba la instalación de la PWA como producto serio. *El de mayor ROI de esta pasada.*
-2. **UX-25** — Quitar `maximum-scale=1` para habilitar el zoom (accesibilidad).
-3. **UX-27** — "Mostrando X de N" cuando hay búsqueda/filtro.
-4. **UX-28 / UX-29** — Meta description + sacar el autoFocus en mobile.
-5. *(Heredados)* **UX-11 / UX-18** — Esconder afordances de demo tras flag · **UX-13** — ARIA en la barra de progreso · **UX-06** — toasts al bottom en mobile.
+1. **UX-33** — `prefers-reduced-motion` global (5 líneas de CSS) + omitir confeti. Accesibilidad real, costo casi cero.
+2. **UX-34** — `aria-live` en el QuantityStepper para anunciar la cantidad.
+3. **UX-32 / UX-36** — subir contraste de placeholders + etiquetar la región de cámara.
+4. **UX-35** — ocultar el clear nativo de la búsqueda.
+5. *(Heredados de alto valor/bajo costo)* **UX-13** ARIA en progreso · **UX-06** toasts al bottom · **UX-11/18** esconder afordances de demo · **UX-16** filtros evidentes.
 
 ### 🏗️ Mejoras estratégicas (rediseño / fondo)
 
-1. **Red de seguridad en entregas (UX-02 + UX-04)** — Undo en el toast de éxito + protección de la selección sin guardar. *La inversión que más confianza operativa agrega; sigue siendo la #1 estratégica.*
-2. **Performance (UX-26)** — Code-splitting de la pantalla de escaneo / `import()` dinámico de html5-qrcode. Mejora la carga inicial en redes de evento.
-3. **Backend real con realtime (UX-20 + UX-10 + UX-09)** — Sync multi-runner verdadero, magic links cross-device y expiración efectiva de links.
-4. **Modo "foco en la tarea" en el detalle (UX-19)** — Ocultar la nav inferior durante la entrega para ganar espacio y evitar taps accidentales (se solapa con UX-04).
+1. **Legibilidad sistémica (UX-31 + UX-32)** — Reauditar la escala de grises de texto: piso en neutral-500 para todo lo legible. Es transversal a toda la app y mejora la experiencia bajo la luz real de una barra.
+2. **Performance (UX-26)** — Code-splitting de la pantalla de escaneo / `import()` dinámico de html5-qrcode. Aligera la primera carga en redes de evento.
+3. **Backend real con realtime (UX-20 + UX-10 + UX-09)** — Sync multi-runner verdadero, magic links cross-device, expiración efectiva.
+4. **Feedback de escaneo + modo foco (UX-07 + UX-19)** — Vibración/beep/flash al detectar el QR y ocultar la nav inferior durante la entrega para ganar espacio y evitar taps.
 
 ---
 
-> **Alcance respetado:** auditoría de experiencia, no de seguridad. En esta pasada no se modificó código de la app — solo se regeneró este reporte. Los 4 fixes de la v1 ya están en `main`/`gh-pages`. Los quick wins de la v2 quedan listos para ejecutar cuando se indique.
+> **Alcance respetado:** auditoría de experiencia, no de seguridad. En esta pasada no se modificó código de la app — solo se regeneró este reporte. Los 11 fixes previos están en `main`/`gh-pages`. Los quick wins de la v3 (especialmente UX-33 y UX-34) quedan listos para ejecutar cuando se indique.

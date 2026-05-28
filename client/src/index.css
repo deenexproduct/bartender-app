@@ -335,3 +335,23 @@ input:focus-visible {
       transparent 60%
     );
 }
+
+/* UX-35: ocultar el botón "x" nativo de los inputs type="search" (ya hay uno custom) */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* UX-33: respetar prefers-reduced-motion — neutraliza animaciones y transiciones
+   para usuarios con sensibilidad vestibular (mareo/náusea). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

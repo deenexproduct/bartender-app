@@ -109,7 +109,12 @@ export function ScanPage() {
       <div className="bg-violet-mesh relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-accent-50 via-white to-cat-extra-bg/50 sm:aspect-[4/3]">
         {mode === 'camera' ? (
           <>
-            <div id={containerId} className="absolute inset-0" />
+            <div
+              id={containerId}
+              role="img"
+              aria-label="Visor de cámara para escanear el QR del cliente. ¿No podés escanear? Usá «Cargar código» para ingresarlo a mano."
+              className="absolute inset-0"
+            />
             <div className="pointer-events-none absolute inset-x-0 top-1/4 h-1/2">
               <div className="animate-scan-line mx-auto h-px w-1/2 bg-status-success shadow-[0_0_12px_3px_#10b981]" />
             </div>
@@ -175,7 +180,7 @@ export function ScanPage() {
             value={manualToken}
             onChange={(e) => setManualToken(e.target.value.toUpperCase())}
             placeholder="DNX-XXXXXX"
-            className="flex-1 rounded-2xl bg-white px-5 py-4 text-base font-semibold tracking-widest text-neutral-900 shadow-card ring-1 ring-neutral-100 placeholder:font-medium placeholder:tracking-widest placeholder:text-neutral-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-400"
+            className="flex-1 rounded-2xl bg-white px-5 py-4 text-base font-semibold tracking-widest text-neutral-900 shadow-card ring-1 ring-neutral-100 placeholder:font-medium placeholder:tracking-widest placeholder:text-neutral-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-400"
           />
           <button
             type="submit"
@@ -203,7 +208,7 @@ export function ScanPage() {
           <button
             type="button"
             onClick={resetDemo}
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-neutral-400 transition-colors hover:bg-primary-100 hover:text-accent-700 focus-visible:ring-2 focus-visible:ring-accent-400"
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500 transition-colors hover:bg-primary-100 hover:text-accent-700 focus-visible:ring-2 focus-visible:ring-accent-400"
             aria-label="Resetear datos de demo"
           >
             <RefreshCcw size={11} /> Reset

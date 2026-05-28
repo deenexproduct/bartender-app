@@ -262,7 +262,7 @@ export function OrderDetailPage() {
               <span className="font-bold text-neutral-700">Avance del retiro</span>
               <span className="font-bold tabular-nums text-neutral-900">
                 {retrievedItems} de {totalItems}
-                <span className="ml-2 text-neutral-400">{progress}%</span>
+                <span className="ml-2 text-neutral-500">{progress}%</span>
               </span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-primary-100">

@@ -78,7 +78,7 @@ export function LoginPage() {
             </p>
 
             <label className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
                 Tu email
               </span>
               <div className="relative">
@@ -107,7 +107,7 @@ export function LoginPage() {
               Mandame el link <ArrowRight size={18} />
             </button>
 
-            <p className="text-center text-xs text-neutral-400">
+            <p className="text-center text-xs text-neutral-500">
               Solo emails autorizados del equipo.
             </p>
           </form>
@@ -118,7 +118,7 @@ export function LoginPage() {
         <div className="mt-6 text-center">
           <Link
             to="/"
-            className="text-xs font-semibold text-neutral-400 transition-colors duration-150 hover:text-accent-700"
+            className="text-xs font-semibold text-neutral-500 transition-colors duration-150 hover:text-accent-700"
           >
             Volver al inicio
           </Link>
