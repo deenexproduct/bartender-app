@@ -22,6 +22,24 @@ class OrdersStore {
   constructor() {
     this.orders = this.load()
     this.snapshotRef = { orders: this.orders }
+    // UX-47: sincronizar entre pestañas. Sin esto el store lee localStorage una sola
+    // vez al cargar; si OTRA pestaña entrega productos, esta queda con estado viejo y
+    // al persistir pisa la entrega de la otra (pérdida de datos). El evento 'storage'
+    // solo dispara en las demás pestañas, así que reflejamos su escritura.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+        if (e.key !== STORAGE_KEY || !e.newValue) return
+        try {
+          const parsed = JSON.parse(e.newValue) as Order[]
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.orders = parsed
+            this.emit()
+          }
+        } catch {
+          /* noop */
+        }
+      })
+    }
   }
 
   private load(): Order[] {
