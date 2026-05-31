@@ -86,6 +86,9 @@ export function OrderDetailPage() {
   // UX-42: avisar "Pedido ya completado" SOLO si llegó completo (escaneaste un QR cerrado),
   // no cuando lo completás vos acá (en ese caso ya navegás a la confirmación).
   const wasCompletedOnArrival = useRef(order?.status === 'completed')
+  // UX-46: guard anti doble-submit. Sin esto, un doble-click rápido en "Confirmar
+  // entrega" llama finalizeDelivery dos veces antes de navegar → entrega el doble.
+  const submittingRef = useRef(false)
 
   // UX-04: persistir cada cambio de selección para sobrevivir nav accidental / refresh.
   useEffect(() => {
@@ -182,6 +185,9 @@ export function OrderDetailPage() {
   }
 
   const finalizeDelivery = () => {
+    // UX-46: bloquear reentradas (doble-click) — un segundo click entregaría de nuevo.
+    if (submittingRef.current) return
+    submittingRef.current = true
     setConfirmOpen(false)
 
     const res = ordersStore.retrieveProducts({
@@ -192,6 +198,7 @@ export function OrderDetailPage() {
     })
 
     if (!res.ok) {
+      submittingRef.current = false // permitir reintento si falló
       toast.error('No pudimos confirmar', res.reason)
       return
     }
