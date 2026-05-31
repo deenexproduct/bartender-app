@@ -14,7 +14,7 @@ const STORAGE_KEY = 'bartender.orders.v3'
 
 type Listener = () => void
 
-class OrdersStore {
+export class OrdersStore {
   private orders: Order[]
   private listeners = new Set<Listener>()
   private snapshotRef: { orders: Order[] }
