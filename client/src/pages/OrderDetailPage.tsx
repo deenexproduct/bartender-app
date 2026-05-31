@@ -155,7 +155,9 @@ export function OrderDetailPage() {
       })),
     ) === 'completed'
 
-  const recentOtherRetrieve = order!.history.find((ev) => {
+  // PB-1: findLast (no find) — el banner dice "acaba de retirar", así que debe mostrar
+  // el retiro MÁS RECIENTE de otro operador, no el más viejo de la ventana de 5 min.
+  const recentOtherRetrieve = order!.history.findLast((ev) => {
     if (operator && ev.operator === operator.name) return false
     const elapsed = Date.now() - new Date(ev.at).getTime()
     return elapsed < 5 * 60 * 1000

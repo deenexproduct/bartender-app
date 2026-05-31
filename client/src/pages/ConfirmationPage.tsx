@@ -13,7 +13,9 @@ const confettiColors = [
 export function ConfirmationPage() {
   const { token = '' } = useParams()
   const [params] = useSearchParams()
-  const items = Number(params.get('items') ?? 0)
+  // PB-2: `|| 0` atrapa NaN (?items=abc) además de null; el `?? 0` previo dejaba pasar
+  // strings inválidos → "Entregaste NaN productos".
+  const items = Number(params.get('items')) || 0
   const isDone = params.get('done') === '1'
 
   return (
